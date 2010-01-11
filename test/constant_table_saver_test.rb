@@ -167,6 +167,11 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
     end
   end
   
+  test "it passes the options preventing caching to the underlying query methods" do
+    assert_equal nil, ConstantPie.find(:first, :conditions => {:filling => 'unicorn'})
+    assert_equal [],  ConstantPie.find(:all,   :conditions => {:filling => 'unicorn'})
+  end
+  
   test "it creates named class methods if a :name option is given" do
     @steak_pie = StandardPie.find_by_filling("Tasty beef steak")
     @mushroom_pie = StandardPie.find_by_filling("Tasty mushrooms with tarragon")
