@@ -50,10 +50,11 @@ module ConstantTableSaver
       class <<self
         def define_named_record_methods
           @constant_record_methods = all.collect do |record|
-            method_name = :"#{constant_table_options[:name_prefix]}#{record[constant_table_options[:name]].downcase.gsub!(/\W+/, '_')}#{constant_table_options[:name_suffix]}"
+            method_name = "#{constant_table_options[:name_prefix]}#{record[constant_table_options[:name]].downcase.gsub!(/\W+/, '_')}#{constant_table_options[:name_suffix]}"
+            next if method_name.blank?
             (class << self; self; end;).instance_eval { define_method(method_name) { record } }
-            method_name
-          end
+            method_name.to_sym
+          end.compact.uniq
         end
         
         def respond_to?(method_id, include_private = false)
