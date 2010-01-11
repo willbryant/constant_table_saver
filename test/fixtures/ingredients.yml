@@ -1,0 +1,12 @@
+steak:
+  id: 1
+  pie_id: 1
+  name: Steak
+mushrooms:
+  id: 2
+  pie_id: 2
+  name: Mushrooms
+tarragon:
+  id: 3
+  pie_id: 2
+  name: Tarragon
