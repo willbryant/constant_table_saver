@@ -42,7 +42,7 @@ module ConstantTableSaver
         # would need to call it on every Rails instance on every Rails server.  Don't use this
         # plugin on if the table isn't really constant!
         def reset_cache
-          @constant_record_methods.each {|method_id| undef_method method_id} if @constant_record_methods
+          @constant_record_methods.each {|method_id| (class << self; self; end;).send(:remove_method, method_id)} if @constant_record_methods
           @cached_records = @cached_records_by_id = @constant_record_methods = nil
         end
       end
