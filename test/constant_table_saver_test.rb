@@ -9,6 +9,16 @@ class ConstantPie < ActiveRecord::Base
   constant_table
 end
 
+class ConstantNamedPie < ActiveRecord::Base
+  set_table_name "pies"
+  constant_table :name => :filling
+end
+
+class ConstantLongNamedPie < ActiveRecord::Base
+  set_table_name "pies"
+  constant_table :name => :filling, :name_prefix => "a_", :name_suffix => "_pie"
+end
+
 class IngredientForStandardPie < ActiveRecord::Base
   set_table_name "ingredients"
   belongs_to :pie, :class_name => "StandardPie"
@@ -19,6 +29,7 @@ class IngredientForConstantPie < ActiveRecord::Base
   belongs_to :pie, :class_name => "ConstantPie"
 end
 
+# proudly stolen from ActiveRecord's test suite, with addition of BEGIN and COMMIT
 ActiveRecord::Base.connection.class.class_eval do
   IGNORED_SQL = [/^PRAGMA/, /^SELECT currval/, /^SELECT CAST/, /^SELECT @@IDENTITY/, /^SELECT @@ROWCOUNT/, /^SAVEPOINT/, /^ROLLBACK TO SAVEPOINT/, /^RELEASE SAVEPOINT/, /SHOW FIELDS/, /^BEGIN$/, /^COMMIT$/]
 
@@ -142,5 +153,28 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
       assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :lock => true).collect(&:attributes)
       assert_equal @pie.attributes, ConstantPie.find(1, :lock => true).attributes
     end
+  end
+  
+  test "it creates named class methods if a :name option is given" do
+    @steak_pie = StandardPie.find_by_filling("Tasty beef steak")
+    @mushroom_pie = StandardPie.find_by_filling("Tasty mushrooms with tarragon")
+    assert_queries(1) do
+      assert_equal @steak_pie.attributes, ConstantNamedPie.tasty_beef_steak.attributes
+      assert_equal @mushroom_pie.attributes, ConstantNamedPie.tasty_mushrooms_with_tarragon.attributes
+    end
+    assert_raises(NoMethodError) do
+      ConstantNamedPie.unicorn_and_thyme
+    end
+    assert_raises(NoMethodError) do
+      ConstantPie.tasty_beef_steak
+    end
+    assert_raises(NoMethodError) do
+      ActiveRecord::Base.tasty_beef_steak
+    end
+  end
+  
+  test "it supports :name_prefix and :name_suffix options" do
+    @steak_pie = StandardPie.find_by_filling("Tasty beef steak")
+    assert_equal @steak_pie.attributes, ConstantLongNamedPie.a_tasty_beef_steak_pie.attributes
   end
 end

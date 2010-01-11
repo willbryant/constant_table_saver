@@ -1,6 +1,10 @@
 module ConstantTableSaver
   module BaseMethods
-    def constant_table
+    def constant_table(options = {})
+      options.assert_valid_keys(:name, :name_prefix, :name_suffix)
+      class_inheritable_accessor :constant_table_options, :instance_writer => false
+      self.constant_table_options = options
+      
       class <<self
         def find(*args)
           options = args.extract_options!
@@ -36,9 +40,34 @@ module ConstantTableSaver
         # would need to call it on every Rails instance on every Rails server.  Don't use this
         # plugin on if the table isn't really constant!
         def reset_cache
-          @cached_records = @cached_records_by_id = nil
+          @constant_record_methods.each {|method_id| undef_method method_id} if @constant_record_methods
+          @cached_records = @cached_records_by_id = @constant_record_methods = nil
         end
       end
+      
+      class <<self
+        def define_named_record_methods
+          @constant_record_methods = all.collect do |record|
+            method_name = :"#{constant_table_options[:name_prefix]}#{record[constant_table_options[:name]].downcase.gsub!(/\W+/, '_')}#{constant_table_options[:name_suffix]}"
+            (class << self; self; end;).instance_eval { define_method(method_name) { record } }
+            method_name
+          end
+        end
+        
+        def respond_to?(method_id, include_private = false)
+          define_named_record_methods if @constant_record_methods.nil?
+          super
+        end
+        
+        def method_missing(method_id, *arguments, &block)
+          if @constant_record_methods.nil?
+            define_named_record_methods
+            send(method_id, arguments, &block) # retry
+          else
+            super
+          end
+        end
+      end if constant_table_options[:name]
     end
   end
 end

@@ -4,6 +4,9 @@ ConstantTableSaver
 Loads all records from the table on first use, and thereafter returns the
 cached (and frozen) records for all find calls.
 
+Optionally, creates class-level methods you can use to grab the records,
+named after the name field you specify.
+
 
 Example
 =======
@@ -18,9 +21,9 @@ Txn.find(:all, :include => :txn_type).each {|txn| .. do something with txn.txn_t
 
 But if you use:
 
-class TxnType
-  constant_table
-end
+  class TxnType
+    constant_table
+  end
 
 Txn.find(:all).each {|txn| .. do something with txn.txn_type ..}
   - no longer requires individual txn_type loads, just every time you start the
@@ -32,6 +35,25 @@ TxnType.find(:all)
 TxnType.find(:all, :conditions => "name LIKE '%foo%'")
 TxnType.find(2, :lock => true)
   - all still result in traditional finds, since you gave options
+
+
+You can also use:
+
+  class TxnType
+    constant_table :name => :label
+  end
+
+Which if you have:
+
+  TxnType.create!(:label => "Customer Purchase")
+  TxnType.create!(:label => "Refund")
+
+Means you will also have methods returning those records:
+
+  TxnType.customer_purchase
+  TxnType.refund
+
+Optionally, you can specify a :name_prefix and/or :name_suffix.
 
 
 Copyright (c) 2010 Will Bryant, Sekuda Ltd, released under the MIT license
