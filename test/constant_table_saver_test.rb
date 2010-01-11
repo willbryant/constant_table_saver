@@ -7,6 +7,12 @@ end
 class ConstantPie < ActiveRecord::Base
   set_table_name "pies"
   constant_table
+  
+  named_scope :filled_with_unicorn, :conditions => {:filling => 'unicorn'}
+  
+  def self.with_unicorn_filling_scope
+    with_scope(:find => {:conditions => {:filling => 'unicorn'}}) { yield }
+  end
 end
 
 class ConstantNamedPie < ActiveRecord::Base
@@ -129,6 +135,12 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
     assert_no_queries do # and once cached, needs no more
       assert_equal @standard_pies.collect(&:attributes), @constant_pie_ingredients.collect(&:pie).collect(&:attributes)
     end
+  end
+  
+  test "it isn't affected by scopes active at the time" do
+    assert_equal 0, ConstantPie.filled_with_unicorn.all.size
+    assert_equal 0, ConstantPie.with_unicorn_filling_scope { ConstantPie.all.size }
+    assert_equal StandardPie.all.size, ConstantPie.all.size
   end
   
   test "prevents the returned records from modification" do

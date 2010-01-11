@@ -9,6 +9,8 @@ module ConstantTableSaver
         def find(*args)
           options = args.extract_options!
           return super unless options.blank? || options.all? {|k, v| v.nil?}
+          scope_options = scope(:find)
+          return super unless scope_options.blank? || scope_options.all? {|k, v| v.nil?}
 
           @cached_records ||= super(:all).each(&:freeze)
           @cached_records_by_id ||= @cached_records.index_by {|record| record.id.to_param}
