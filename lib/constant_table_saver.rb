@@ -1,3 +1,5 @@
+require 'active_record/fixtures' # so we can hook it & reset our cache afterwards
+
 module ConstantTableSaver
   module BaseMethods
     def constant_table(options = {})
@@ -41,7 +43,7 @@ module ConstantTableSaver
         # is useful for running tests, it's unlikely that you can use this in production - you
         # would need to call it on every Rails instance on every Rails server.  Don't use this
         # plugin on if the table isn't really constant!
-        def reset_cache
+        def reset_constant_record_cache!
           @constant_record_methods.each {|method_id| (class << self; self; end;).send(:remove_method, method_id)} if @constant_record_methods
           @cached_records = @cached_records_by_id = @constant_record_methods = nil
         end
@@ -58,8 +60,7 @@ module ConstantTableSaver
         end
         
         def respond_to?(method_id, include_private = false)
-          define_named_record_methods if @constant_record_methods.nil?
-          super
+          super || (@constant_record_methods.nil? && define_named_record_methods && super)
         end
         
         def method_missing(method_id, *arguments, &block)
@@ -71,6 +72,26 @@ module ConstantTableSaver
           end
         end
       end if constant_table_options[:name]
+      
+      class <<Fixtures
+        # normally, create_fixtures method gets called exactly once - but unfortunately, it
+        # loads the class and does a #respond_to?, which causes us to load and cache before
+        # the new records are added, so we need to reset our cache afterwards.
+        def create_fixtures_with_constant_tables(*args)
+          returning(create_fixtures_without_constant_tables(*args)) { ConstantTableSaver.reset_all_caches }
+        end
+        def reset_cache_with_constant_tables(*args)
+          returning(reset_cache_without_constant_tables(*args))     { ConstantTableSaver.reset_all_caches }
+        end
+        alias_method_chain :create_fixtures, :constant_tables
+        alias_method_chain :reset_cache,     :constant_tables
+      end unless Fixtures.respond_to?(:create_fixtures_with_constant_tables)
+    end
+  end
+
+  def self.reset_all_caches
+    ActiveRecord::Base.send(:subclasses).each do |klass|
+      klass.reset_constant_record_cache! if klass.respond_to?(:reset_constant_record_cache!)
     end
   end
 end

@@ -52,7 +52,7 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
   fixtures :all
   
   setup do
-    ConstantPie.reset_cache
+    ConstantPie.reset_constant_record_cache!
   end
 
   test "it caches find(:all) results" do
