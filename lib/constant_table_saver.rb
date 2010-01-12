@@ -68,7 +68,7 @@ module ConstantTableSaver
         def method_missing(method_id, *arguments, &block)
           if @constant_record_methods.nil?
             define_named_record_methods
-            send(method_id, arguments, &block) # retry
+            send(method_id, *arguments, &block) # retry
           else
             super
           end
