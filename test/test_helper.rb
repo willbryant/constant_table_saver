@@ -13,7 +13,7 @@ require 'active_record/fixtures'
 begin
   require 'ruby-debug'
   Debugger.start
-rescue
+rescue LoadError
   # ruby-debug not installed, no debugging for you
 end
 
