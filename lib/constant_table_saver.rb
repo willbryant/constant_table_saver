@@ -16,7 +16,7 @@ module ConstantTableSaver
 
           args.pop unless options.nil?
 
-          @cached_records ||= super(:all).each(&:freeze)
+          @cached_records ||= super(:all, :order => primary_key).each(&:freeze)
           @cached_records_by_id ||= @cached_records.index_by {|record| record.id.to_param}
 
           case args.first
