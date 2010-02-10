@@ -175,9 +175,11 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
   test "it creates named class methods if a :name option is given" do
     @steak_pie = StandardPie.find_by_filling("Tasty beef steak")
     @mushroom_pie = StandardPie.find_by_filling("Tasty mushrooms with tarragon")
+    @mince_pie = StandardPie.find_by_filling("Mince")
     assert_queries(1) do
       assert_equal @steak_pie.attributes, ConstantNamedPie.tasty_beef_steak.attributes
       assert_equal @mushroom_pie.attributes, ConstantNamedPie.tasty_mushrooms_with_tarragon.attributes
+      assert_equal @mince_pie.attributes, ConstantNamedPie.mince.attributes
     end
     assert_raises(NoMethodError) do
       ConstantNamedPie.unicorn_and_thyme

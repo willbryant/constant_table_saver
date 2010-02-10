@@ -4,3 +4,6 @@ steak:
 mushroom_and_tarragon:
   id: 2
   filling: Tasty mushrooms with tarragon
+mince:
+  id: 3
+  filling: Mince
