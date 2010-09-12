@@ -80,10 +80,10 @@ module ConstantTableSaver
         # loads the class and does a #respond_to?, which causes us to load and cache before
         # the new records are added, so we need to reset our cache afterwards.
         def create_fixtures_with_constant_tables(*args)
-          returning(create_fixtures_without_constant_tables(*args)) { ConstantTableSaver.reset_all_caches }
+          create_fixtures_without_constant_tables(*args).tap { ConstantTableSaver.reset_all_caches }
         end
         def reset_cache_with_constant_tables(*args)
-          returning(reset_cache_without_constant_tables(*args))     { ConstantTableSaver.reset_all_caches }
+          reset_cache_without_constant_tables(*args).tap     { ConstantTableSaver.reset_all_caches }
         end
         alias_method_chain :create_fixtures, :constant_tables
         alias_method_chain :reset_cache,     :constant_tables

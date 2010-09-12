@@ -19,9 +19,6 @@ end
 
 RAILS_ENV = ENV['RAILS_ENV'] ||= 'test'
 
-FileUtils.mkdir File.join(File.dirname(__FILE__), "log") rescue nil
-RAILS_DEFAULT_LOGGER = ActiveRecord::Base.logger = Logger.new(File.join(File.dirname(__FILE__), "log", "#{ENV['RAILS_ENV']}.log"))
-
 ActiveRecord::Base.configurations = YAML::load(IO.read(File.join(File.dirname(__FILE__), "database.yml")))
 ActiveRecord::Base.establish_connection ActiveRecord::Base.configurations[ENV['RAILS_ENV']]
 load(File.join(File.dirname(__FILE__), "/schema.rb"))
