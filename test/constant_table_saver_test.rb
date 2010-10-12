@@ -137,9 +137,16 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
     end
   end
   
-  test "it isn't affected by scopes active at the time" do
+  test "it isn't affected by scopes active at the time of first load" do
     assert_equal 0, ConstantPie.filled_with_unicorn.all.size
-    assert_equal 0, ConstantPie.with_unicorn_filling_scope { ConstantPie.all.size }
+    assert_equal 0, ConstantPie.with_unicorn_filling_scope { ConstantPie.all.length }
+    assert_equal StandardPie.all.size, ConstantPie.all.size
+  end
+  
+  test "it isn't affected by relational algebra active at the time of first load" do
+    assert_equal 0, ConstantPie.filled_with_unicorn.all.size
+    assert_equal 0, ConstantPie.where(:filling => 'unicorn').all.length
+    assert_equal 2, ConstantPie.where("filling LIKE 'Tasty%'").all.length
     assert_equal StandardPie.all.size, ConstantPie.all.size
   end
   
