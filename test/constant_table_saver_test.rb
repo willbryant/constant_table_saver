@@ -148,7 +148,7 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
     assert_equal 0, ConstantPie.where(:filling => 'unicorn').all.length
     assert_equal 2, ConstantPie.where("filling LIKE 'Tasty%'").all.length
     assert_equal StandardPie.all.size, ConstantPie.all.size
-  end
+  end if ActiveRecord::VERSION::MAJOR > 2
   
   test "prevents the returned records from modification" do
     @pie = ConstantPie.find(:first)

@@ -7,7 +7,7 @@ module ConstantTableSaver
       class_inheritable_accessor :constant_table_options, :instance_writer => false
       self.constant_table_options = options
       
-      if respond_to?(:scoped)
+      if ActiveRecord::VERSION::MAJOR > 2
         require 'active_support/core_ext/object/to_param'
 
         def scoped(options = nil)
@@ -139,7 +139,7 @@ module ConstantTableSaver
   end
 
   def self.reset_all_caches
-    klasses = ActiveRecord::Base.respond_to?(:descendants) ? ActiveRecord::Base.descendants : ActiveRecord::Base.subclassses
+    klasses = ActiveRecord::Base.respond_to?(:descendants) ? ActiveRecord::Base.descendants : ActiveRecord::Base.send(:subclasses)
     klasses.each {|klass| klass.reset_constant_record_cache! if klass.respond_to?(:reset_constant_record_cache!)}
   end
 end
