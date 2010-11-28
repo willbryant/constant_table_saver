@@ -11,10 +11,10 @@ named after the name field you specify.
 Example
 =======
 
-Txn.find(:all).each {|txn| .. do something with txn.txn_type ..}
+Txn.all.each {|txn| .. do something with txn.txn_type ..}
  - would load each txn_type individually
 
-Txn.find(:all, :include => :txn_type).each {|txn| .. do something with txn.txn_type ..}
+Txn.all(:include => :txn_type).each {|txn| .. do something with txn.txn_type ..}
  - would load the txn_types in one go after the txns query, but would still need
    a query every time you load txns
 
@@ -25,14 +25,14 @@ But if you use:
     constant_table
   end
 
-Txn.find(:all).each {|txn| .. do something with txn.txn_type ..}
+Txn.all.each {|txn| .. do something with txn.txn_type ..}
   - no longer requires individual txn_type loads, just every time you start the
     server (or every request, in development mode)
 
-TxnType.find(:all)
+TxnType.all
   - also cached, but:
 
-TxnType.find(:all, :conditions => "name LIKE '%foo%'")
+TxnType.all(:conditions => "name LIKE '%foo%'")
 TxnType.find(2, :lock => true)
   - all still result in traditional finds, since you gave options
 
