@@ -9,118 +9,12 @@ module ConstantTableSaver
       
       if ActiveRecord::VERSION::MAJOR > 2
         require 'active_support/core_ext/object/to_param'
-
-        def scoped(options = nil)
-          return super if options || current_scoped_methods
-          @cached_blank_scope ||= super.tap do |s|
-            class << s
-              def to_a
-                return @records if loaded?
-                super.each(&:freeze)
-              end
-              
-              def find(*args)
-                # annoyingly, the call to find to load a belongs_to passes :conditions => nil, which causes
-                # the base find method to apply_finder_options and construct an entire new scope, which is
-                # unnecessary and also means that it bypasses our find_one implementation (we don't interfere
-                # with scopes or finds that actually do apply conditions etc.), so we check as a special case
-                return find_with_ids(args.first) if args.length == 2 && args.last == {:conditions => nil}
-                super
-              end
-
-              def find_first
-                # the normal scope implementation would cache this anyway, but we force a load of all records,
-                # since otherwise if the app used .first before using .all there'd be unnecessary queries
-                to_a.first
-              end
-            
-              def find_last
-                # as for find_first
-                to_a.last
-              end
-            
-              def find_one(id)
-                # we'd like to use the same as ActiveRecord's finder_methods.rb, which uses:
-                #  id = id.id if ActiveRecord::Base === id
-                # but referencing ActiveRecord::Base here segfaults my ruby 1.8.7
-                # (2009-06-12 patchlevel 174) [universal-darwin10.0]!  instead we use to_param.
-                @cached_records_by_id ||= all.index_by {|record| record.id.to_param}
-                @cached_records_by_id[id.to_param]
-              end
-            end
-          end
-        end
+        extend ActiveRecord3ClassMethods
       else
-        class <<self
-          def find(*args)
-            options = args.last if args.last.is_a?(Hash)
-            return super unless options.blank? || options.all? {|k, v| v.nil?}
-            scope_options = scope(:find)
-            return super unless scope_options.blank? || scope_options.all? {|k, v| v.nil?}
-
-            args.pop unless options.nil?
-
-            @cached_records ||= super(:all, :order => primary_key).each(&:freeze)
-            @cached_records_by_id ||= @cached_records.index_by {|record| record.id.to_param}
-
-            case args.first
-              when :first then @cached_records.first
-              when :last  then @cached_records.last
-              when :all   then @cached_records.dup # shallow copy of the array
-              else
-                expects_array = args.first.kind_of?(Array)
-                return args.first if expects_array && args.first.empty?
-                ids = expects_array ? args.first : args
-                ids = ids.flatten.compact.uniq
-
-                case ids.size
-                  when 0
-                    raise RecordNotFound, "Couldn't find #{name} without an ID"
-                  when 1
-                    result = @cached_records_by_id[ids.first.to_param]
-                    expects_array ? [result] : result
-                  else
-                    ids.collect {|id| @cached_records_by_id[id.to_param]}
-                end
-            end
-          end
-        end
+        extend ActiveRecord2ClassMethods
       end
-      
-      class <<self
-        # Resets the cached records.  Remember that this only affects this process, so while this
-        # is useful for running tests, it's unlikely that you can use this in production - you
-        # would need to call it on every Rails instance on every Rails server.  Don't use this
-        # plugin on if the table isn't really constant!
-        def reset_constant_record_cache!
-          @constant_record_methods.each {|method_id| (class << self; self; end;).send(:remove_method, method_id)} if @constant_record_methods
-          @cached_records = @cached_records_by_id = @constant_record_methods = @cached_blank_scope = nil
-        end
-      end
-      
-      class <<self
-        def define_named_record_methods
-          @constant_record_methods = all.collect do |record|
-            method_name = "#{constant_table_options[:name_prefix]}#{record[constant_table_options[:name]].downcase.gsub(/\W+/, '_')}#{constant_table_options[:name_suffix]}"
-            next if method_name.blank?
-            (class << self; self; end;).instance_eval { define_method(method_name) { record } }
-            method_name.to_sym
-          end.compact.uniq
-        end
-        
-        def respond_to?(method_id, include_private = false)
-          super || (@constant_record_methods.nil? && define_named_record_methods && super)
-        end
-        
-        def method_missing(method_id, *arguments, &block)
-          if @constant_record_methods.nil?
-            define_named_record_methods
-            send(method_id, *arguments, &block) # retry
-          else
-            super
-          end
-        end
-      end if constant_table_options[:name]
+      extend ClassMethods
+      extend NameClassMethods if constant_table_options[:name]
       
       class <<Fixtures
         # normally, create_fixtures method gets called exactly once - but unfortunately, it
@@ -141,5 +35,118 @@ module ConstantTableSaver
   def self.reset_all_caches
     klasses = ActiveRecord::Base.respond_to?(:descendants) ? ActiveRecord::Base.descendants : ActiveRecord::Base.send(:subclasses)
     klasses.each {|klass| klass.reset_constant_record_cache! if klass.respond_to?(:reset_constant_record_cache!)}
+  end
+  
+  module ClassMethods
+    # Resets the cached records.  Remember that this only affects this process, so while this
+    # is useful for running tests, it's unlikely that you can use this in production - you
+    # would need to call it on every Rails instance on every Rails server.  Don't use this
+    # plugin on if the table isn't really constant!
+    def reset_constant_record_cache!
+      @constant_record_methods.each {|method_id| (class << self; self; end;).send(:remove_method, method_id)} if @constant_record_methods
+      @cached_records = @cached_records_by_id = @constant_record_methods = @cached_blank_scope = nil
+    end
+  end
+
+  module ActiveRecord3ClassMethods
+    def scoped(options = nil)
+      return super if options || current_scoped_methods
+      @cached_blank_scope ||= super.tap do |s|
+        class << s
+          def to_a
+            return @records if loaded?
+            super.each(&:freeze)
+          end
+          
+          def find(*args)
+            # annoyingly, the call to find to load a belongs_to passes :conditions => nil, which causes
+            # the base find method to apply_finder_options and construct an entire new scope, which is
+            # unnecessary and also means that it bypasses our find_one implementation (we don't interfere
+            # with scopes or finds that actually do apply conditions etc.), so we check as a special case
+            return find_with_ids(args.first) if args.length == 2 && args.last == {:conditions => nil}
+            super
+          end
+      
+          def find_first
+            # the normal scope implementation would cache this anyway, but we force a load of all records,
+            # since otherwise if the app used .first before using .all there'd be unnecessary queries
+            to_a.first
+          end
+        
+          def find_last
+            # as for find_first
+            to_a.last
+          end
+        
+          def find_one(id)
+            # we'd like to use the same as ActiveRecord's finder_methods.rb, which uses:
+            #  id = id.id if ActiveRecord::Base === id
+            # but referencing ActiveRecord::Base here segfaults my ruby 1.8.7
+            # (2009-06-12 patchlevel 174) [universal-darwin10.0]!  instead we use to_param.
+            @cached_records_by_id ||= all.index_by {|record| record.id.to_param}
+            @cached_records_by_id[id.to_param]
+          end
+        end
+      end
+    end
+  end
+  
+  module ActiveRecord2ClassMethods
+    def find(*args)
+      options = args.last if args.last.is_a?(Hash)
+      return super unless options.blank? || options.all? {|k, v| v.nil?}
+      scope_options = scope(:find)
+      return super unless scope_options.blank? || scope_options.all? {|k, v| v.nil?}
+
+      args.pop unless options.nil?
+
+      @cached_records ||= super(:all, :order => primary_key).each(&:freeze)
+      @cached_records_by_id ||= @cached_records.index_by {|record| record.id.to_param}
+
+      case args.first
+        when :first then @cached_records.first
+        when :last  then @cached_records.last
+        when :all   then @cached_records.dup # shallow copy of the array
+        else
+          expects_array = args.first.kind_of?(Array)
+          return args.first if expects_array && args.first.empty?
+          ids = expects_array ? args.first : args
+          ids = ids.flatten.compact.uniq
+
+          case ids.size
+            when 0
+              raise RecordNotFound, "Couldn't find #{name} without an ID"
+            when 1
+              result = @cached_records_by_id[ids.first.to_param]
+              expects_array ? [result] : result
+            else
+              ids.collect {|id| @cached_records_by_id[id.to_param]}
+          end
+      end
+    end
+  end
+  
+  module NameClassMethods
+    def define_named_record_methods
+      @constant_record_methods = all.collect do |record|
+        method_name = "#{constant_table_options[:name_prefix]}#{record[constant_table_options[:name]].downcase.gsub(/\W+/, '_')}#{constant_table_options[:name_suffix]}"
+        next if method_name.blank?
+        (class << self; self; end;).instance_eval { define_method(method_name) { record } }
+        method_name.to_sym
+      end.compact.uniq
+    end
+    
+    def respond_to?(method_id, include_private = false)
+      super || (@constant_record_methods.nil? && define_named_record_methods && super)
+    end
+    
+    def method_missing(method_id, *arguments, &block)
+      if @constant_record_methods.nil?
+        define_named_record_methods
+        send(method_id, *arguments, &block) # retry
+      else
+        super
+      end
+    end
   end
 end

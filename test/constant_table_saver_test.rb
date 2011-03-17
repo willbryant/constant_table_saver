@@ -153,6 +153,7 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
   test "prevents the returned records from modification" do
     @pie = ConstantPie.find(:first)
     assert @pie.frozen?
+    assert !StandardPie.find(:first).frozen?
   end
   
   test "isn't affected by modifying the returned result arrays" do
