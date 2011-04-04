@@ -25,4 +25,4 @@ load(File.join(File.dirname(__FILE__), "/schema.rb"))
 ActiveSupport::TestCase.send(:include, ActiveRecord::TestFixtures) if ActiveRecord.const_defined?('TestFixtures')
 ActiveSupport::TestCase.fixture_path = File.join(File.dirname(__FILE__), "fixtures")
 
-require 'init' # load the plugin
+require File.expand_path(File.join(File.dirname(__FILE__), '../init')) # load the plugin

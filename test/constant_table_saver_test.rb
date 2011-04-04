@@ -1,4 +1,4 @@
-require 'test_helper'
+require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper'))
 
 class StandardPie < ActiveRecord::Base
   set_table_name "pies"
