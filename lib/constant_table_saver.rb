@@ -128,6 +128,7 @@ module ConstantTableSaver
   
   module NameClassMethods
     def define_named_record_methods
+      @constant_record_methods = [] # dummy so respond_to? & method_missing don't call us again if reading an attribute causes another method_missing
       @constant_record_methods = all.collect do |record|
         method_name = "#{constant_table_options[:name_prefix]}#{record[constant_table_options[:name]].downcase.gsub(/\W+/, '_')}#{constant_table_options[:name_suffix]}"
         next if method_name.blank?
