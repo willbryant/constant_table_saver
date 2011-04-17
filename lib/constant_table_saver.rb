@@ -84,7 +84,7 @@ module ConstantTableSaver
             # but referencing ActiveRecord::Base here segfaults my ruby 1.8.7
             # (2009-06-12 patchlevel 174) [universal-darwin10.0]!  instead we use to_param.
             @cached_records_by_id ||= all.index_by {|record| record.id.to_param}
-            @cached_records_by_id[id.to_param]
+            @cached_records_by_id[id.to_param] || raise(::ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
           end
         end
       end
@@ -115,7 +115,7 @@ module ConstantTableSaver
 
           case ids.size
             when 0
-              raise RecordNotFound, "Couldn't find #{name} without an ID"
+              raise ::ActiveRecord::RecordNotFound, "Couldn't find #{name} without an ID"
             when 1
               result = @cached_records_by_id[ids.first.to_param]
               expects_array ? [result] : result

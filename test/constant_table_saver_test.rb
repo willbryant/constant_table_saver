@@ -204,4 +204,10 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
     @steak_pie = StandardPie.find_by_filling("Tasty beef steak")
     assert_equal @steak_pie.attributes, ConstantLongNamedPie.a_tasty_beef_steak_pie.attributes
   end
+  
+  test "it raises the usual exception if asked for a record with id nil" do
+    assert_raises ActiveRecord::RecordNotFound do
+      ConstantPie.find(nil)
+    end
+  end
 end
