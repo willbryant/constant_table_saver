@@ -85,6 +85,17 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
     end
   end
 
+  test "it caches find(ids) results" do
+    @pie1 = StandardPie.find(1)
+    @pie2 = StandardPie.find(2)
+    assert_queries(1) do
+      assert_equal [@pie1.attributes, @pie2.attributes], ConstantPie.find([1, 2]).collect(&:attributes)
+    end
+    assert_no_queries do
+      assert_equal [@pie1.attributes, @pie2.attributes], ConstantPie.find([1, 2]).collect(&:attributes)
+    end
+  end
+
   test "it caches find(:first) results" do
     @pie = StandardPie.find(:first)
     assert_queries(1) do

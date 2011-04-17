@@ -79,12 +79,25 @@ module ConstantTableSaver
           end
         
           def find_one(id)
+            # see below re to_param
+            cached_records_by_id[id.to_param] || raise(::ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
+          end
+          
+          def find_some(ids)
+            # see below re to_param
+            ids.collect {|id| cached_records_by_id[id.to_param]}.tap do |results| # obviously since find_one caches efficiently, this isn't inefficient as it would be for real finds
+              results.compact!
+              raise(::ActiveRecord::RecordNotFound, "Couldn't find all #{name.pluralize} with IDs #{ids.join ','} (found #{results.size} results, but was looking for #{ids.size}") unless results.size == ids.size
+            end
+          end
+        
+        private
+          def cached_records_by_id
             # we'd like to use the same as ActiveRecord's finder_methods.rb, which uses:
             #  id = id.id if ActiveRecord::Base === id
             # but referencing ActiveRecord::Base here segfaults my ruby 1.8.7
             # (2009-06-12 patchlevel 174) [universal-darwin10.0]!  instead we use to_param.
             @cached_records_by_id ||= all.index_by {|record| record.id.to_param}
-            @cached_records_by_id[id.to_param] || raise(::ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
           end
         end
       end
