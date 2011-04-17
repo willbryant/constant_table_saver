@@ -117,10 +117,13 @@ module ConstantTableSaver
             when 0
               raise ::ActiveRecord::RecordNotFound, "Couldn't find #{name} without an ID"
             when 1
-              result = @cached_records_by_id[ids.first.to_param]
+              result = @cached_records_by_id[ids.first.to_param] || raise(::ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{ids.first}")
               expects_array ? [result] : result
             else
-              ids.collect {|id| @cached_records_by_id[id.to_param]}
+              ids.collect {|id| @cached_records_by_id[id.to_param]}.tap do |results|
+                results.compact!
+                raise(::ActiveRecord::RecordNotFound, "Couldn't find all #{name.pluralize} with IDs #{ids.join ','} (found #{results.size} results, but was looking for #{ids.size}") unless results.size == ids.size
+              end
           end
       end
     end

@@ -210,4 +210,18 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
       ConstantPie.find(nil)
     end
   end
+  
+  test "it raises the usual exception if asked for a nonexistant records" do
+    max_id = ConstantPie.all.collect(&:id).max
+    assert_raises ActiveRecord::RecordNotFound do
+      ConstantPie.find(max_id + 1)
+    end
+  end
+  
+  test "it raises the usual exception if asked for a mixture of present records and nonexistant records" do
+    max_id = ConstantPie.all.collect(&:id).max
+    assert_raises ActiveRecord::RecordNotFound do
+      ConstantPie.find([max_id, max_id + 1])
+    end
+  end
 end
