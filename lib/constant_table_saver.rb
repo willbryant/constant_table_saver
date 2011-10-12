@@ -17,7 +17,8 @@ module ConstantTableSaver
       extend ClassMethods
       extend NameClassMethods if constant_table_options[:name]
       
-      class <<Fixtures
+      klass = defined?(Fixtures) ? Fixtures : ActiveRecord::Fixtures
+      class <<klass
         # normally, create_fixtures method gets called exactly once - but unfortunately, it
         # loads the class and does a #respond_to?, which causes us to load and cache before
         # the new records are added, so we need to reset our cache afterwards.
@@ -29,7 +30,7 @@ module ConstantTableSaver
         end
         alias_method_chain :create_fixtures, :constant_tables
         alias_method_chain :reset_cache,     :constant_tables
-      end unless Fixtures.respond_to?(:create_fixtures_with_constant_tables)
+      end unless klass.respond_to?(:create_fixtures_with_constant_tables)
     end
   end
 
