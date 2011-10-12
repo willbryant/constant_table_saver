@@ -52,7 +52,9 @@ module ConstantTableSaver
 
   module ActiveRecord3ClassMethods
     def scoped(options = nil)
-      return super if options || current_scoped_methods
+      return super if options
+      return super if respond_to?(:current_scoped_methods) && current_scoped_methods
+      return super if respond_to?(:current_scope) && current_scope
       @cached_blank_scope ||= super.tap do |s|
         class << s
           def to_a
