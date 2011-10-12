@@ -8,7 +8,11 @@ class ConstantPie < ActiveRecord::Base
   set_table_name "pies"
   constant_table
   
-  named_scope :filled_with_unicorn, :conditions => {:filling => 'unicorn'}
+  if defined?(named_scope)
+    named_scope :filled_with_unicorn, :conditions => {:filling => 'unicorn'}
+  else
+    scope :filled_with_unicorn, :conditions => {:filling => 'unicorn'}
+  end
   
   def self.with_unicorn_filling_scope
     with_scope(:find => {:conditions => {:filling => 'unicorn'}}) { yield }
@@ -67,7 +71,8 @@ else
 
       # FIXME: this seems bad. we should probably have a better way to indicate
       # the query was cached
-      unless 'CACHE' == values[:name]
+      unless ['CACHE', 'SCHEMA'].include?(values[:name]) # we have altered this from the original, to exclude SCHEMA as well
+        # debugger if sql =~ /^PRAGMA table_info/ && Kernel.caller.any? {|i| i.include?('test_it_creates_named_class_methods_if_a_')}
         $queries_executed << sql unless self.class.ignored_sql.any? { |r| sql =~ r }
       end
     end
