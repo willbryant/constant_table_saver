@@ -1,4 +1,5 @@
 require 'active_record/fixtures' # so we can hook it & reset our cache afterwards
+require 'active_support/core_ext/class/inheritable_attributes.rb' unless defined?(class_inheritable_accessor)
 
 module ConstantTableSaver
   module BaseMethods
