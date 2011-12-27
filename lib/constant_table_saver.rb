@@ -94,6 +94,41 @@ module ConstantTableSaver
               raise(::ActiveRecord::RecordNotFound, "Couldn't find all #{name.pluralize} with IDs #{ids.join ','} (found #{results.size} results, but was looking for #{ids.size}") unless results.size == ids.size
             end
           end
+
+          # in Rails 3.1 the associations code was rewritten to generalise its sql generation to support
+          # more complex relationships (eg. nested :through associations).  however unfortunately, during
+          # this work the implementation of belongs_to associations was changed so that it no longer calls
+          # one of the basic find_ methods above; instead a vanilla target scope is constructed, a where()
+          # scope to add the constraint that the primary key = the FK value is constructed, the two are
+          # merged, and then #first is called on that scope.  frustratingly, all this complexity means that
+          # our find_ hooks above are no longer called when dereferencing a belongs_to association; they
+          # work fine and are used elsewhere, but we have to explicitly handle belongs_to target scope
+          # merging to avoid those querying, which is a huge PITA.  because we want to ensure that we don't
+          # end up accidentally caching other scope requests, we explicitly build a list of the possible
+          # ARel constrained scopes - indexing them by their expression in SQL so that we don't need to
+          # code in the list of all the possible ARel terms.  we then go one step further and make this
+          # cached scope pre-loaded using the record we already have - there's sadly no external way to do
+          # this so we have to shove in the instance variables.
+          #
+          # it will be clear that this was a very problematic ActiveRecord refactoring.
+          if ActiveRecord::VERSION::MINOR > 0
+            def belongs_to_record_scopes
+              @belongs_to_record_scopes = to_a.each_with_object({}) do |record, results|
+                scope_that_belongs_to_will_want = where(table[primary_key].eq(record.id))
+                scope_that_belongs_to_will_want.instance_variable_set("@loaded", true)
+                scope_that_belongs_to_will_want.instance_variable_set("@records", [record])
+                results[scope_that_belongs_to_will_want.to_sql] = scope_that_belongs_to_will_want
+              end.freeze
+            end
+
+            def merge(other)
+              if belongs_to_record_scope = belongs_to_record_scopes[other.to_sql]
+                return belongs_to_record_scope
+              end
+
+              super other
+            end
+          end
         
         private
           def cached_records_by_id
