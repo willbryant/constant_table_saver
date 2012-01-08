@@ -1,11 +1,10 @@
 require 'active_record/fixtures' # so we can hook it & reset our cache afterwards
-require 'active_support/core_ext/class/inheritable_attributes.rb' unless defined?(class_inheritable_accessor)
 
 module ConstantTableSaver
   module BaseMethods
     def constant_table(options = {})
       options.assert_valid_keys(:name, :name_prefix, :name_suffix)
-      class_inheritable_accessor :constant_table_options, :instance_writer => false
+      class_attribute :constant_table_options, :instance_writer => false
       self.constant_table_options = options
       
       if ActiveRecord::VERSION::MAJOR > 2
