@@ -112,7 +112,7 @@ module ConstantTableSaver
           # it will be clear that this was a very problematic ActiveRecord refactoring.
           if ActiveRecord::VERSION::MINOR > 0
             def belongs_to_record_scopes
-              @belongs_to_record_scopes = to_a.each_with_object({}) do |record, results|
+              @belongs_to_record_scopes ||= to_a.each_with_object({}) do |record, results|
                 scope_that_belongs_to_will_want = where(table[primary_key].eq(record.id))
                 scope_that_belongs_to_will_want.instance_variable_set("@loaded", true)
                 scope_that_belongs_to_will_want.instance_variable_set("@records", [record])
