@@ -8,6 +8,12 @@ Optionally, creates class-level methods you can use to grab the records,
 named after the name field you specify.
 
 
+Compatibility
+=============
+
+Currently tested against Rails 2.3.14, 3.0.17, 3.1.8, and 3.2.8.
+
+
 Example
 =======
 
@@ -56,4 +62,4 @@ Means you will also have methods returning those records:
 Optionally, you can specify a :name_prefix and/or :name_suffix.
 
 
-Copyright (c) 2010 Will Bryant, Sekuda Ltd, released under the MIT license
+Copyright (c) 2010-2012 Will Bryant, Sekuda Ltd, released under the MIT license

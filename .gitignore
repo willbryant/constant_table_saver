@@ -1,2 +1,5 @@
+.DS_Store
+constant_table_saver-*.gem
+Gemfile.lock
 test/constant_table_saver.db
 test/log/test.log
