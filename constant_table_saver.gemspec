@@ -16,7 +16,8 @@ named after the name field you specify.
 Compatibility
 =============
 
-Currently tested against Rails 2.3.14, 3.0.17, 3.1.8, and 3.2.8.
+Currently tested against Rails 3.2.13, on Ruby 1.8.7 and 2.0.0p0.
+Was also tested compatible with 2.3.14, 3.0.17, and 3.1.8.
 EOF
   gem.has_rdoc     = false
   gem.author       = "Will Bryant"

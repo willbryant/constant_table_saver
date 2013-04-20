@@ -11,7 +11,8 @@ named after the name field you specify.
 Compatibility
 =============
 
-Currently tested against Rails 2.3.14, 3.0.17, 3.1.8, and 3.2.8.
+Currently tested against Rails 3.2.13, on Ruby 1.8.7 and 2.0.0p0.
+Was also tested compatible with 2.3.14, 3.0.17, and 3.1.8.
 
 
 Example
@@ -62,4 +63,4 @@ Means you will also have methods returning those records:
 Optionally, you can specify a :name_prefix and/or :name_suffix.
 
 
-Copyright (c) 2010-2012 Will Bryant, Sekuda Ltd, released under the MIT license
+Copyright (c) 2010-2013 Will Bryant, Sekuda Ltd, released under the MIT license
