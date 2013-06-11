@@ -192,7 +192,7 @@ module ConstantTableSaver
     end
     
     def respond_to?(method_id, include_private = false)
-      super || (@constant_record_methods.nil? && define_named_record_methods && super)
+      super || (@constant_record_methods.nil? && attribute_methods_generated? && define_named_record_methods && super)
     end
     
     def method_missing(method_id, *arguments, &block)
