@@ -9,11 +9,7 @@ class ConstantPie < ActiveRecord::Base
   set_table_name "pies"
   constant_table
   
-  if defined?(named_scope)
-    named_scope :filled_with_unicorn, :conditions => {:filling => 'unicorn'}
-  else
-    scope :filled_with_unicorn, :conditions => {:filling => 'unicorn'}
-  end
+  scope :filled_with_unicorn, -> { where(:filling => 'unicorn') }
   
   def self.with_unicorn_filling_scope
     with_scope(:find => {:conditions => {:filling => 'unicorn'}}) { yield }
@@ -151,7 +147,7 @@ class ConstantTableSaverTest < ActiveRecord::TestCase
     assert_equal 0, ConstantPie.where(:filling => 'unicorn').all.length
     assert_equal 2, ConstantPie.where("filling LIKE 'Tasty%'").all.length
     assert_equal StandardPie.all.size, ConstantPie.all.size
-  end if ActiveRecord::VERSION::MAJOR > 2
+  end
   
   test "prevents the returned records from modification" do
     @pie = ConstantPie.find(:first)

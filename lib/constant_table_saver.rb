@@ -1,4 +1,5 @@
 require 'active_record/fixtures' # so we can hook it & reset our cache afterwards
+require 'active_support/core_ext/object/to_param'
 
 module ConstantTableSaver
   module BaseMethods
@@ -7,16 +8,11 @@ module ConstantTableSaver
       class_attribute :constant_table_options, :instance_writer => false
       self.constant_table_options = options
       
-      if ActiveRecord::VERSION::MAJOR > 2
-        require 'active_support/core_ext/object/to_param'
-        extend ActiveRecord3ClassMethods
-      else
-        extend ActiveRecord2ClassMethods
-      end
+      extend ActiveRecord3ClassMethods
       extend ClassMethods
       extend NameClassMethods if constant_table_options[:name]
       
-      klass = defined?(Fixtures) ? Fixtures : ActiveRecord::Fixtures
+      klass = defined?(ActiveRecord::FixtureSet) ? ActiveRecord::FixtureSet : ActiveRecord::Fixtures
       class <<klass
         # normally, create_fixtures method gets called exactly once - but unfortunately, it
         # loads the class and does a #respond_to?, which causes us to load and cache before
@@ -138,44 +134,6 @@ module ConstantTableSaver
             @cached_records_by_id ||= all.index_by {|record| record.id.to_param}
           end
         end
-      end
-    end
-  end
-  
-  module ActiveRecord2ClassMethods
-    def find(*args)
-      options = args.last if args.last.is_a?(Hash)
-      return super unless options.blank? || options.all? {|k, v| v.nil?}
-      scope_options = scope(:find)
-      return super unless scope_options.blank? || scope_options.all? {|k, v| v.nil?}
-
-      args.pop unless options.nil?
-
-      @cached_records ||= super(:all, :order => primary_key).each(&:freeze)
-      @cached_records_by_id ||= @cached_records.index_by {|record| record.id.to_param}
-
-      case args.first
-        when :first then @cached_records.first
-        when :last  then @cached_records.last
-        when :all   then @cached_records.dup # shallow copy of the array
-        else
-          expects_array = args.first.kind_of?(Array)
-          return args.first if expects_array && args.first.empty?
-          ids = expects_array ? args.first : args
-          ids = ids.flatten.compact.uniq
-
-          case ids.size
-            when 0
-              raise ::ActiveRecord::RecordNotFound, "Couldn't find #{name} without an ID"
-            when 1
-              result = @cached_records_by_id[ids.first.to_param] || raise(::ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{ids.first}")
-              expects_array ? [result] : result
-            else
-              ids.collect {|id| @cached_records_by_id[id.to_param]}.tap do |results|
-                results.compact!
-                raise(::ActiveRecord::RecordNotFound, "Couldn't find all #{name.pluralize} with IDs #{ids.join ','} (found #{results.size} results, but was looking for #{ids.size}") unless results.size == ids.size
-              end
-          end
       end
     end
   end
