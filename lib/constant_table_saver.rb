@@ -8,7 +8,11 @@ module ConstantTableSaver
       class_attribute :constant_table_options, :instance_writer => false
       self.constant_table_options = options
       
-      extend ActiveRecord3ClassMethods
+      if ActiveRecord::VERSION::MAJOR == 3
+        extend ActiveRecord3ClassMethods
+      else
+        extend ActiveRecord4ClassMethods
+      end
       extend ClassMethods
       extend NameClassMethods if constant_table_options[:name]
       
@@ -41,7 +45,7 @@ module ConstantTableSaver
     # plugin on if the table isn't really constant!
     def reset_constant_record_cache!
       @constant_record_methods.each {|method_id| (class << self; self; end;).send(:remove_method, method_id)} if @constant_record_methods
-      @cached_records = @cached_records_by_id = @constant_record_methods = @cached_blank_scope = nil
+      @cached_records = @cached_records_by_id = @constant_record_methods = @cached_blank_scope = @cached_relation = nil
     end
   end
 
@@ -106,25 +110,82 @@ module ConstantTableSaver
           # this so we have to shove in the instance variables.
           #
           # it will be clear that this was a very problematic ActiveRecord refactoring.
-          if ActiveRecord::VERSION::MINOR > 0
-            def belongs_to_record_scopes
-              @belongs_to_record_scopes ||= to_a.each_with_object({}) do |record, results|
-                scope_that_belongs_to_will_want = where(table[primary_key].eq(record.id))
-                scope_that_belongs_to_will_want.instance_variable_set("@loaded", true)
-                scope_that_belongs_to_will_want.instance_variable_set("@records", [record])
-                results[scope_that_belongs_to_will_want.to_sql] = scope_that_belongs_to_will_want
-              end.freeze
+          def belongs_to_record_scopes
+            @belongs_to_record_scopes ||= to_a.each_with_object({}) do |record, results|
+              scope_that_belongs_to_will_want = where(table[primary_key].eq(record.id))
+              scope_that_belongs_to_will_want.instance_variable_set("@loaded", true)
+              scope_that_belongs_to_will_want.instance_variable_set("@records", [record])
+              results[scope_that_belongs_to_will_want.to_sql] = scope_that_belongs_to_will_want
+            end.freeze
+          end
+
+          def merge(other)
+            if belongs_to_record_scope = belongs_to_record_scopes[other.to_sql]
+              return belongs_to_record_scope
             end
 
-            def merge(other)
-              if belongs_to_record_scope = belongs_to_record_scopes[other.to_sql]
-                return belongs_to_record_scope
-              end
-
-              super other
-            end
+            super other
           end
         
+        private
+          def cached_records_by_id
+            # we'd like to use the same as ActiveRecord's finder_methods.rb, which uses:
+            #  id = id.id if ActiveRecord::Base === id
+            # but referencing ActiveRecord::Base here segfaults my ruby 1.8.7
+            # (2009-06-12 patchlevel 174) [universal-darwin10.0]!  instead we use to_param.
+            @cached_records_by_id ||= all.index_by {|record| record.id.to_param}
+          end
+        end
+      end
+    end
+  end
+
+  module ActiveRecord4ClassMethods
+    def relation
+      @cached_relation ||= super.tap do |s|
+        class << s
+          def to_a
+            return @records if loaded?
+            super.each(&:freeze)
+          end
+
+          def all(*args)
+            if args.empty?
+              to_a
+            else
+              super
+            end
+          end
+          
+          def find_first
+            # the normal scope implementation would cache this anyway, but we force a load of all records,
+            # since otherwise if the app used .first before using .all there'd be unnecessary queries
+            to_a.first
+          end
+        
+          def find_last
+            # as for find_first
+            to_a.last
+          end
+      
+          def find_take
+            # as for find_first
+            to_a.take
+          end
+          
+          def find_one(id)
+            # see below re to_param
+            cached_records_by_id[id.to_param] || raise(::ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
+          end
+          
+          def find_some(ids)
+            # see below re to_param
+            ids.collect {|id| cached_records_by_id[id.to_param]}.tap do |results| # obviously since find_one caches efficiently, this isn't inefficient as it would be for real finds
+              results.compact!
+              raise(::ActiveRecord::RecordNotFound, "Couldn't find all #{name.pluralize} with IDs #{ids.join ','} (found #{results.size} results, but was looking for #{ids.size}") unless results.size == ids.size
+            end
+          end
+
         private
           def cached_records_by_id
             # we'd like to use the same as ActiveRecord's finder_methods.rb, which uses:

@@ -175,11 +175,13 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   test "it doesn't cache find queries with options" do
     @pies = StandardPie.find(:all, :lock => true)
     @pie = StandardPie.find(1, :lock => true)
-    assert_queries(2) do
+    assert_queries(3) do
+      assert_equal @pies.collect(&:attributes), ConstantPie.all(:lock => true).collect(&:attributes)
       assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :lock => true).collect(&:attributes)
       assert_equal @pie.attributes, ConstantPie.find(1, :lock => true).attributes
     end
-    assert_queries(2) do
+    assert_queries(3) do
+      assert_equal @pies.collect(&:attributes), ConstantPie.all(:lock => true).collect(&:attributes)
       assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :lock => true).collect(&:attributes)
       assert_equal @pie.attributes, ConstantPie.find(1, :lock => true).attributes
     end
