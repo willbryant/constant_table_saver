@@ -39,7 +39,7 @@ end
 class ConstantTableSaverTest < ActiveSupport::TestCase
   fixtures :all
   
-  setup do
+  def setup
     ConstantPie.reset_constant_record_cache!
   end
 

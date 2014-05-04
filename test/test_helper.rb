@@ -1,9 +1,10 @@
 require 'rubygems'
 
+gem 'minitest', '~> 4.0'
 gem 'activesupport', ENV['RAILS_VERSION']
 gem 'activerecord',  ENV['RAILS_VERSION']
 
-require 'test/unit'
+require 'minitest/autorun'
 require 'active_support'
 require 'active_support/test_case'
 require 'active_record'
