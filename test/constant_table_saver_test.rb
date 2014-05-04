@@ -36,11 +36,22 @@ class IngredientForConstantPie < ActiveRecord::Base
   belongs_to :pie, :class_name => "ConstantPie"
 end
 
-class ConstantTableSaverTest < ActiveRecord::TestCase
+class ConstantTableSaverTest < ActiveSupport::TestCase
   fixtures :all
   
   setup do
     ConstantPie.reset_constant_record_cache!
+  end
+
+  def assert_queries(num = 1)
+    ::SQLCounter.clear_log
+    yield
+  ensure
+    assert_equal num, ::SQLCounter.log.size, "#{::SQLCounter.log.size} instead of #{num} queries were executed.#{::SQLCounter.log.size == 0 ? '' : "\nQueries:\n#{::SQLCounter.log.join("\n")}"}"
+  end
+
+  def assert_no_queries(&block)
+    assert_queries(0, &block)
   end
 
   test "it caches find(:all) results" do
