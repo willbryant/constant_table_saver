@@ -54,6 +54,8 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     assert_queries(0, &block)
   end
 
+  DEPRECATED_FINDERS = ActiveRecord::VERSION::MAJOR == 3 || (ActiveRecord::VERSION::MAJOR == 4 && ActiveRecord::VERSION::MINOR == 0)
+
   test "it caches all() results" do
     @pies = StandardPie.all.to_a
     assert_queries(1) do
@@ -72,7 +74,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     assert_no_queries do
       assert_equal @pies.collect(&:attributes), ConstantPie.find(:all).to_a.collect(&:attributes)
     end
-  end
+  end if DEPRECATED_FINDERS
 
   test "it caches find(id) results" do
     @pie = StandardPie.find(1)
@@ -103,7 +105,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     assert_no_queries do
       assert_equal @pie.attributes, ConstantPie.find(:first).attributes
     end
-  end
+  end if DEPRECATED_FINDERS
 
   test "it caches first() results" do
     @pie = StandardPie.first
@@ -123,7 +125,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     assert_no_queries do
       assert_equal @pie.attributes, ConstantPie.find(:last).attributes
     end
-  end
+  end if DEPRECATED_FINDERS
   
   test "it caches last() results" do
     @pie = StandardPie.last
@@ -149,7 +151,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   
   test "it isn't affected by scopes active at the time of first load" do
     assert_equal 0, ConstantPie.filled_with_unicorn.all.to_a.size
-    assert_equal 0, ConstantPie.with_unicorn_filling_scope { ConstantPie.all.to_a.length }
+    assert_equal 0, ConstantPie.with_unicorn_filling_scope { ConstantPie.all.to_a.length } if DEPRECATED_FINDERS
     assert_equal StandardPie.all.to_a.size, ConstantPie.all.to_a.size
   end
   
@@ -161,9 +163,9 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   end
   
   test "prevents the returned records from modification" do
-    @pie = ConstantPie.find(:first)
+    @pie = ConstantPie.first
     assert @pie.frozen?
-    assert !StandardPie.find(:first).frozen?
+    assert !StandardPie.first.frozen?
   end
   
   test "isn't affected by modifying the returned result arrays" do
@@ -171,9 +173,22 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     @pies.reject! {|pie| pie.filling =~ /Steak/}
     assert_equal StandardPie.all.to_a.collect(&:attributes), ConstantPie.all.to_a.collect(&:attributes)
   end
+
+  test "it doesn't cache find queries on scopes with options" do
+    @pies = StandardPie.lock.all.to_a
+    @pie = StandardPie.lock.find(1)
+    assert_queries(2) do
+      assert_equal @pies.collect(&:attributes), ConstantPie.lock.all.collect(&:attributes)
+      assert_equal @pie.attributes, ConstantPie.lock.find(1).attributes
+    end
+    assert_queries(2) do
+      assert_equal @pies.collect(&:attributes), ConstantPie.lock.all.collect(&:attributes)
+      assert_equal @pie.attributes, ConstantPie.lock.find(1).attributes
+    end
+  end
   
   test "it doesn't cache find queries with options" do
-    @pies = StandardPie.find(:all, :lock => true)
+    @pies = StandardPie.all(:lock => true).to_a
     @pie = StandardPie.find(1, :lock => true)
     assert_queries(3) do
       assert_equal @pies.collect(&:attributes), ConstantPie.all(:lock => true).collect(&:attributes)
@@ -185,11 +200,15 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
       assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :lock => true).collect(&:attributes)
       assert_equal @pie.attributes, ConstantPie.find(1, :lock => true).attributes
     end
-  end
+  end if DEPRECATED_FINDERS
   
   test "it passes the options preventing caching to the underlying query methods" do
-    assert_equal nil, ConstantPie.find(:first, :conditions => {:filling => 'unicorn'})
-    assert_equal [],  ConstantPie.find(:all,   :conditions => {:filling => 'unicorn'})
+    assert_equal nil, ConstantPie.where(:filling => 'unicorn').first
+    assert_equal nil, ConstantPie.first(:conditions => {:filling => 'unicorn'}) if DEPRECATED_FINDERS
+    assert_equal nil, ConstantPie.find(:first, :conditions => {:filling => 'unicorn'}) if DEPRECATED_FINDERS
+    assert_equal [],  ConstantPie.where(:filling => 'unicorn').all
+    assert_equal [],  ConstantPie.all(:conditions => {:filling => 'unicorn'}) if DEPRECATED_FINDERS
+    assert_equal [],  ConstantPie.find(:all,   :conditions => {:filling => 'unicorn'}) if DEPRECATED_FINDERS
   end
   
   test "it creates named class methods if a :name option is given" do
