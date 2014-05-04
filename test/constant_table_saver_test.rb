@@ -54,23 +54,23 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     assert_queries(0, &block)
   end
 
-  test "it caches find(:all) results" do
-    @pies = StandardPie.find(:all)
+  test "it caches all() results" do
+    @pies = StandardPie.all.to_a
     assert_queries(1) do
-      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all).collect(&:attributes)
+      assert_equal @pies.collect(&:attributes), ConstantPie.all.to_a.collect(&:attributes)
     end
     assert_no_queries do
-      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all).collect(&:attributes)
+      assert_equal @pies.collect(&:attributes), ConstantPie.all.to_a.collect(&:attributes)
     end
   end
 
-  test "it caches all() results" do
-    @pies = StandardPie.all
+  test "it caches find(:all) results" do
+    @pies = StandardPie.find(:all).to_a
     assert_queries(1) do
-      assert_equal @pies.collect(&:attributes), ConstantPie.all.collect(&:attributes)
+      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all).to_a.collect(&:attributes)
     end
     assert_no_queries do
-      assert_equal @pies.collect(&:attributes), ConstantPie.all.collect(&:attributes)
+      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all).to_a.collect(&:attributes)
     end
   end
 
@@ -136,9 +136,9 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   end
   
   test "it caches belongs_to association find queries" do
-    @standard_pie_ingredients = IngredientForStandardPie.all
+    @standard_pie_ingredients = IngredientForStandardPie.all.to_a
     @standard_pies = @standard_pie_ingredients.collect(&:pie)
-    @constant_pie_ingredients = IngredientForConstantPie.all
+    @constant_pie_ingredients = IngredientForConstantPie.all.to_a
     assert_queries(1) do # doesn't need to make 3 queries for 3 pie assocations!
       assert_equal @standard_pies.collect(&:attributes), @constant_pie_ingredients.collect(&:pie).collect(&:attributes)
     end
@@ -148,16 +148,16 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   end
   
   test "it isn't affected by scopes active at the time of first load" do
-    assert_equal 0, ConstantPie.filled_with_unicorn.all.size
-    assert_equal 0, ConstantPie.with_unicorn_filling_scope { ConstantPie.all.length }
-    assert_equal StandardPie.all.size, ConstantPie.all.size
+    assert_equal 0, ConstantPie.filled_with_unicorn.all.to_a.size
+    assert_equal 0, ConstantPie.with_unicorn_filling_scope { ConstantPie.all.to_a.length }
+    assert_equal StandardPie.all.to_a.size, ConstantPie.all.to_a.size
   end
   
   test "it isn't affected by relational algebra active at the time of first load" do
-    assert_equal 0, ConstantPie.filled_with_unicorn.all.size
-    assert_equal 0, ConstantPie.where(:filling => 'unicorn').all.length
-    assert_equal 2, ConstantPie.where("filling LIKE 'Tasty%'").all.length
-    assert_equal StandardPie.all.size, ConstantPie.all.size
+    assert_equal 0, ConstantPie.filled_with_unicorn.all.to_a.size
+    assert_equal 0, ConstantPie.where(:filling => 'unicorn').all.to_a.length
+    assert_equal 2, ConstantPie.where("filling LIKE 'Tasty%'").all.to_a.length
+    assert_equal StandardPie.all.to_a.size, ConstantPie.all.to_a.size
   end
   
   test "prevents the returned records from modification" do
@@ -167,9 +167,9 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   end
   
   test "isn't affected by modifying the returned result arrays" do
-    @pies = ConstantPie.all
+    @pies = ConstantPie.all.to_a
     @pies.reject! {|pie| pie.filling =~ /Steak/}
-    assert_equal StandardPie.all.collect(&:attributes), ConstantPie.all.collect(&:attributes)
+    assert_equal StandardPie.all.to_a.collect(&:attributes), ConstantPie.all.to_a.collect(&:attributes)
   end
   
   test "it doesn't cache find queries with options" do
@@ -222,14 +222,14 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   end
   
   test "it raises the usual exception if asked for a nonexistant records" do
-    max_id = ConstantPie.all.collect(&:id).max
+    max_id = ConstantPie.all.to_a.collect(&:id).max
     assert_raises ActiveRecord::RecordNotFound do
       ConstantPie.find(max_id + 1)
     end
   end
   
   test "it raises the usual exception if asked for a mixture of present records and nonexistant records" do
-    max_id = ConstantPie.all.collect(&:id).max
+    max_id = ConstantPie.all.to_a.collect(&:id).max
     assert_raises ActiveRecord::RecordNotFound do
       ConstantPie.find([max_id, max_id + 1])
     end
