@@ -175,30 +175,33 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   end
 
   test "it doesn't cache find queries on scopes with options" do
-    @pies = StandardPie.lock.all.to_a
-    @pie = StandardPie.lock.find(1)
-    assert_queries(2) do
-      assert_equal @pies.collect(&:attributes), ConstantPie.lock.all.collect(&:attributes)
-      assert_equal @pie.attributes, ConstantPie.lock.find(1).attributes
+    @pies = StandardPie.select("id").all.to_a
+    @pie = StandardPie.select("id").find(1)
+    @second_pie = StandardPie.select("id").find(2)
+    assert_queries(3) do
+      assert_equal @pies.collect(&:attributes), ConstantPie.select("id").all.collect(&:attributes)
+      assert_equal @pie.attributes, ConstantPie.select("id").find(1).attributes
+      assert_equal [@pie, @second_pie].collect(&:attributes), ConstantPie.select("id").find([1, 2]).collect(&:attributes)
     end
-    assert_queries(2) do
-      assert_equal @pies.collect(&:attributes), ConstantPie.lock.all.collect(&:attributes)
-      assert_equal @pie.attributes, ConstantPie.lock.find(1).attributes
+    assert_queries(3) do
+      assert_equal @pies.collect(&:attributes), ConstantPie.select("id").all.collect(&:attributes)
+      assert_equal @pie.attributes, ConstantPie.select("id").find(1).attributes
+      assert_equal [@pie, @second_pie].collect(&:attributes), ConstantPie.select("id").find([1, 2]).collect(&:attributes)
     end
   end
   
   test "it doesn't cache find queries with options" do
-    @pies = StandardPie.all(:lock => true).to_a
-    @pie = StandardPie.find(1, :lock => true)
+    @pies = StandardPie.all(:select => "id").to_a
+    @pie = StandardPie.find(1, :select => "id")
     assert_queries(3) do
-      assert_equal @pies.collect(&:attributes), ConstantPie.all(:lock => true).collect(&:attributes)
-      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :lock => true).collect(&:attributes)
-      assert_equal @pie.attributes, ConstantPie.find(1, :lock => true).attributes
+      assert_equal @pies.collect(&:attributes), ConstantPie.all(:select => "id").collect(&:attributes)
+      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :select => "id").collect(&:attributes)
+      assert_equal @pie.attributes, ConstantPie.find(1, :select => "id").attributes
     end
     assert_queries(3) do
-      assert_equal @pies.collect(&:attributes), ConstantPie.all(:lock => true).collect(&:attributes)
-      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :lock => true).collect(&:attributes)
-      assert_equal @pie.attributes, ConstantPie.find(1, :lock => true).attributes
+      assert_equal @pies.collect(&:attributes), ConstantPie.all(:select => "id").collect(&:attributes)
+      assert_equal @pies.collect(&:attributes), ConstantPie.find(:all, :select => "id").collect(&:attributes)
+      assert_equal @pie.attributes, ConstantPie.find(1, :select => "id").attributes
     end
   end if DEPRECATED_FINDERS
   

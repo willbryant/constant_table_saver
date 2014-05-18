@@ -45,7 +45,55 @@ module ConstantTableSaver
     # plugin on if the table isn't really constant!
     def reset_constant_record_cache!
       @constant_record_methods.each {|method_id| (class << self; self; end;).send(:remove_method, method_id)} if @constant_record_methods
-      @cached_records = @cached_records_by_id = @constant_record_methods = @cached_blank_scope = @cached_relation = nil
+      @cached_records = @cached_records_by_id = @constant_record_methods = @cached_blank_scope = @find_by_sql = nil
+    end
+  end
+
+  module ActiveRecord4ClassMethods
+    def find_by_sql(sql, binds = [])
+      @find_by_sql ||= {}
+      @find_by_sql[:all]   ||= all.to_sql
+      @find_by_sql[:id]    ||= relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).limit(1).to_sql
+      @find_by_sql[:oldid] ||= relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).
+                                         order(relation.table[primary_key].asc).limit(1).to_sql # used by 4.0
+      @find_by_sql[:first] ||= relation.order(relation.table[primary_key].asc).limit(1).to_sql
+      @find_by_sql[:last]  ||= relation.order(relation.table[primary_key].desc).limit(1).to_sql
+
+      _sql = sanitize_sql(sql)
+      _sql = _sql.to_sql if sql.respond_to?(:to_sql)
+
+      if binds.empty?
+        if _sql == @find_by_sql[:all]
+          return @cached_records ||= super(relation.to_sql).each(&:freeze)
+        elsif _sql == @find_by_sql[:first]
+          return [relation.to_a.first].compact
+        elsif _sql == @find_by_sql[:last]
+          return [relation.to_a.last].compact
+        end
+
+      elsif (_sql == @find_by_sql[:id] || _sql == @find_by_sql[:oldid]) &&
+            binds.length == 1 &&
+            binds.first.first.is_a?(ActiveRecord::ConnectionAdapters::Column) &&
+            binds.first.first.name == primary_key
+        @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
+        return [@cached_records_by_id[binds.first.last.to_param]].compact
+      end
+
+      super
+    end
+
+    def relation
+      super.tap do |s|
+        class << s
+          # we implement find_some here because we'd have to use partial string matching to catch
+          # this case in find_by_sql, which would be ugly.  (we do the other cases in find_by_sql
+          # because it's simpler & the only place to catch things like association find queries.)
+          def find_some(ids)
+            return super if @values.present? # special cases such as offset and limit
+            ids.collect {|id| find_one(id)}
+          end
+        end
+      end
     end
   end
 
@@ -140,65 +188,6 @@ module ConstantTableSaver
     end
   end
 
-  module ActiveRecord4ClassMethods
-    def relation
-      @cached_relation ||= super.tap do |s|
-        class << s
-          def to_a
-            return @records if loaded?
-            super.each(&:freeze)
-          end
-
-          def all(*args)
-            if args.empty?
-              to_a
-            else
-              super
-            end
-          end
-          
-          def find_first
-            # the normal scope implementation would cache this anyway, but we force a load of all records,
-            # since otherwise if the app used .first before using .all there'd be unnecessary queries
-            to_a.first
-          end
-        
-          def find_last
-            # as for find_first
-            to_a.last
-          end
-      
-          def find_take
-            # as for find_first
-            to_a.take
-          end
-          
-          def find_one(id)
-            # see below re to_param
-            cached_records_by_id[id.to_param] || raise(::ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
-          end
-          
-          def find_some(ids)
-            # see below re to_param
-            ids.collect {|id| cached_records_by_id[id.to_param]}.tap do |results| # obviously since find_one caches efficiently, this isn't inefficient as it would be for real finds
-              results.compact!
-              raise(::ActiveRecord::RecordNotFound, "Couldn't find all #{name.pluralize} with IDs #{ids.join ','} (found #{results.size} results, but was looking for #{ids.size}") unless results.size == ids.size
-            end
-          end
-
-        private
-          def cached_records_by_id
-            # we'd like to use the same as ActiveRecord's finder_methods.rb, which uses:
-            #  id = id.id if ActiveRecord::Base === id
-            # but referencing ActiveRecord::Base here segfaults my ruby 1.8.7
-            # (2009-06-12 patchlevel 174) [universal-darwin10.0]!  instead we use to_param.
-            @cached_records_by_id ||= all.index_by {|record| record.id.to_param}
-          end
-        end
-      end
-    end
-  end
-  
   module NameClassMethods
     def define_named_record_methods
       @constant_record_methods = [] # dummy so respond_to? & method_missing don't call us again if reading an attribute causes another method_missing
