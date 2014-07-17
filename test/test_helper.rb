@@ -11,7 +11,7 @@ require 'active_record'
 require 'active_record/fixtures'
 require 'byebug' rescue nil
 
-RAILS_ENV = ENV['RAILS_ENV'] ||= 'test'
+RAILS_ENV = ENV['RAILS_ENV'] ||= 'sqlite3'
 
 ActiveRecord::Base.configurations = YAML::load(IO.read(File.join(File.dirname(__FILE__), "database.yml")))
 ActiveRecord::Base.establish_connection ActiveRecord::Base.configurations[ENV['RAILS_ENV']]
