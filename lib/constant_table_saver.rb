@@ -51,13 +51,13 @@ module ConstantTableSaver
 
   module ActiveRecord4ClassMethods
     def find_by_sql(sql, binds = [])
-      @find_by_sql ||= {}
-      @find_by_sql[:all]   ||= all.to_sql
-      @find_by_sql[:id]    ||= relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).limit(1).to_sql
-      @find_by_sql[:oldid] ||= relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).
-                                         order(relation.table[primary_key].asc).limit(1).to_sql # used by 4.0
-      @find_by_sql[:first] ||= relation.order(relation.table[primary_key].asc).limit(1).to_sql
-      @find_by_sql[:last]  ||= relation.order(relation.table[primary_key].desc).limit(1).to_sql
+      @find_by_sql ||= {
+        :all   => all.to_sql,
+        :id    => relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).limit(1).to_sql,
+        :oldid => relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).order(relation.table[primary_key].asc).limit(1).to_sql, # used by 4.0
+        :first => relation.order(relation.table[primary_key].asc).limit(1).to_sql,
+        :last  => relation.order(relation.table[primary_key].desc).limit(1).to_sql,
+      }
 
       _sql = sanitize_sql(sql)
       _sql = _sql.to_sql if sql.respond_to?(:to_sql)
