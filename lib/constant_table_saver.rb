@@ -58,10 +58,9 @@ module ConstantTableSaver
         :last  => relation.order(relation.table[primary_key].desc).limit(1).to_sql,
       }
 
-      _sql = sanitize_sql(sql)
-      _sql = _sql.to_sql if sql.respond_to?(:to_sql)
-
       if binds.empty?
+        _sql = _to_sql(sanitize_sql(sql))
+
         if _sql == @find_by_sql[:all]
           return @cached_records ||= super(relation.to_sql).each(&:freeze)
         elsif _sql == @find_by_sql[:first]
@@ -70,15 +69,19 @@ module ConstantTableSaver
           return [relation.to_a.last].compact
         end
 
-      elsif _sql == @find_by_sql[:id] &&
-            binds.length == 1 &&
+      elsif binds.length == 1 &&
             binds.first.first.is_a?(ActiveRecord::ConnectionAdapters::Column) &&
-            binds.first.first.name == primary_key
+            binds.first.first.name == primary_key &&
+            _to_sql(sanitize_sql(sql)) == @find_by_sql[:id]
         @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
         return [@cached_records_by_id[binds.first.last.to_param]].compact
       end
 
       super
+    end
+
+    def _to_sql(sql)
+      sql.respond_to?(:to_sql) ? sql.to_sql : sql
     end
 
     def relation
