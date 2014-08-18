@@ -1,5 +1,7 @@
 require 'rubygems'
 
+puts "Rails: #{ENV['RAILS_VERSION'] || 'default'}"
+puts "Env: #{ENV['RAILS_ENV'] || 'not set'}"
 gem 'minitest', (ENV['RAILS_VERSION'] =~ /^(3\.|4\.0)/ ? '~> 4.0' : nil)
 gem 'activesupport', ENV['RAILS_VERSION']
 gem 'activerecord',  ENV['RAILS_VERSION']
