@@ -54,7 +54,6 @@ module ConstantTableSaver
       @find_by_sql ||= {
         :all   => all.to_sql,
         :id    => relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).limit(1).to_sql,
-        :oldid => relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).order(relation.table[primary_key].asc).limit(1).to_sql, # used by 4.0
         :first => relation.order(relation.table[primary_key].asc).limit(1).to_sql,
         :last  => relation.order(relation.table[primary_key].desc).limit(1).to_sql,
       }
@@ -71,7 +70,7 @@ module ConstantTableSaver
           return [relation.to_a.last].compact
         end
 
-      elsif (_sql == @find_by_sql[:id] || _sql == @find_by_sql[:oldid]) &&
+      elsif _sql == @find_by_sql[:id] &&
             binds.length == 1 &&
             binds.first.first.is_a?(ActiveRecord::ConnectionAdapters::Column) &&
             binds.first.first.name == primary_key
