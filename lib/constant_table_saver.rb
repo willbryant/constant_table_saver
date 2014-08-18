@@ -53,13 +53,13 @@ module ConstantTableSaver
     def find_by_sql(sql, binds = [])
       @find_by_sql ||= {
         :all   => all.to_sql,
-        :id    => relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).limit(1).to_sql,
+        :id    => relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 1))).limit(1),
         :first => relation.order(relation.table[primary_key].asc).limit(1).to_sql,
         :last  => relation.order(relation.table[primary_key].desc).limit(1).to_sql,
       }
 
       if binds.empty?
-        _sql = _to_sql(sanitize_sql(sql))
+        _sql = _to_sql_with_binds(sql, binds)
 
         if _sql == @find_by_sql[:all]
           return @cached_records ||= super(relation.to_sql).each(&:freeze)
@@ -72,7 +72,7 @@ module ConstantTableSaver
       elsif binds.length == 1 &&
             binds.first.first.is_a?(ActiveRecord::ConnectionAdapters::Column) &&
             binds.first.first.name == primary_key &&
-            _to_sql(sanitize_sql(sql)) == @find_by_sql[:id]
+            _to_sql_with_binds(sql, binds) == _to_sql_with_binds(@find_by_sql[:id], binds) # we have to late-render the find(id) SQL because mysql2 on 4.1 and later requires the bind variables to render the SQL, and errors out with a nil dereference otherwise
         @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
         return [@cached_records_by_id[binds.first.last.to_param]].compact
       end
@@ -80,8 +80,14 @@ module ConstantTableSaver
       super
     end
 
-    def _to_sql(sql)
-      sql.respond_to?(:to_sql) ? sql.to_sql : sql
+    def _to_sql_with_binds(sql, binds)
+      if sql.respond_to?(:to_sql)
+        # an arel object
+        connection.to_sql(sql, binds)
+      else
+        # a plain string
+        sql
+      end
     end
 
     def relation
