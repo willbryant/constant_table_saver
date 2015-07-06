@@ -45,9 +45,9 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
 
   def assert_queries(num = 1)
     ::SQLCounter.clear_log
-    yield
-  ensure
+    result = yield
     assert_equal num, ::SQLCounter.log.size, "#{::SQLCounter.log.size} instead of #{num} queries were executed.#{::SQLCounter.log.size == 0 ? '' : "\nQueries:\n#{::SQLCounter.log.join("\n")}"}"
+    result
   end
 
   def assert_no_queries(&block)
@@ -78,11 +78,14 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
 
   test "it caches find(id) results" do
     @pie = StandardPie.find(1)
+    @other_pie = StandardPie.find(2)
     assert_queries(1) do
       assert_equal @pie.attributes, ConstantPie.find(1).attributes
+      assert_equal @other_pie.attributes, ConstantPie.find(2).attributes
     end
     assert_no_queries do
       assert_equal @pie.attributes, ConstantPie.find(1).attributes
+      assert_equal @other_pie.attributes, ConstantPie.find(2).attributes
     end
   end
 
