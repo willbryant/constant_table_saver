@@ -27,8 +27,10 @@ module ConstantTableSaver
         def reset_cache_with_constant_tables(*args)
           reset_cache_without_constant_tables(*args).tap     { ConstantTableSaver.reset_all_caches }
         end
-        alias_method_chain :create_fixtures, :constant_tables
-        alias_method_chain :reset_cache,     :constant_tables
+        alias :create_fixtures_without_constant_tables :create_fixtures
+        alias :create_fixtures :create_fixtures_with_constant_tables
+        alias :reset_cache_without_constant_tables :reset_cache
+        alias :reset_cache :reset_cache_with_constant_tables
       end unless klass.respond_to?(:create_fixtures_with_constant_tables)
     end
   end
@@ -74,36 +76,41 @@ module ConstantTableSaver
   end
 
   module ActiveRecord5ClassMethods
-    def find_by_sql(sql, binds = [])
+    def find_by_sql(sql, binds = [], preparable: nil, &block)
       @find_by_sql ||= {
         :all   => all.to_sql,
-        :id    => relation.where(relation.table[primary_key].eq(connection.respond_to?(:substitute_at) ? connection.substitute_at(columns_hash[primary_key], 0) : Arel::Nodes::BindParam.new)).limit(1).
-                    tap {|r| r.bind_values += [[columns_hash[primary_key], :undefined]]}. # work around AR 4.1.9-4.1.x (but not 4.2.x) calling nil.first if there's no bind_values
-                    arel,
-        :first => relation.order(relation.table[primary_key].asc).limit(1).to_sql,
-        :last  => relation.order(relation.table[primary_key].desc).limit(1).to_sql,
+        :id    => relation.where(relation.table[primary_key].eq(Arel::Nodes::BindParam.new)).limit(1).arel,
+        :first => relation.order(relation.table[primary_key].asc).limit(1).arel,
+        :last  => relation.order(relation.table[primary_key].desc).limit(1).arel,
       }
 
-      if binds.empty?
-        _sql = _to_sql_with_binds(sql, binds)
+      @limit_one ||= ActiveRecord::Attribute.with_cast_value("LIMIT", 1, ActiveRecord::Type::Value.new)
 
+      _sql = _to_sql_with_binds(sql, binds)
+
+      if binds.empty?
         if _sql == @find_by_sql[:all]
           return @cached_records ||= super(relation.to_sql).each(&:freeze)
-        elsif _sql == @find_by_sql[:first]
+        end
+
+      elsif binds.size == 1 &&
+            binds.last == @limit_one
+        if _sql == _to_sql_with_binds(@find_by_sql[:first], binds)
           return [relation.to_a.first].compact
-        elsif _sql == @find_by_sql[:last]
+        elsif _sql == _to_sql_with_binds(@find_by_sql[:last], binds)
           return [relation.to_a.last].compact
         end
 
-      elsif binds.length == 1 &&
-            binds.first.first.is_a?(ActiveRecord::ConnectionAdapters::Column) &&
-            binds.first.first.name == primary_key &&
-            _to_sql_with_binds(sql, binds) == _to_sql_with_binds(@find_by_sql[:id], binds) # we have to late-render the find(id) SQL because mysql2 on 4.1 and later requires the bind variables to render the SQL, and errors out with a nil dereference otherwise
+      elsif binds.size == 2 &&
+            binds.last == @limit_one &&
+            binds.first.is_a?(ActiveRecord::Relation::QueryAttribute) &&
+            binds.first.name == primary_key &&
+            _sql == _to_sql_with_binds(@find_by_sql[:id], binds) # we have to late-render the find(id) SQL because mysql2 on 4.1 and later requires the bind variables to render the SQL, and errors out with a nil dereference otherwise
         @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
-        return [@cached_records_by_id[binds.first.last.to_param]].compact
+        return [@cached_records_by_id[binds.first.value.to_param]].compact
       end
 
-      super
+      super(sql, binds, preparable: preparable, &block)
     end
   end
 
