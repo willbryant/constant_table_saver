@@ -7,6 +7,8 @@ module ConstantTableSaver
       options.assert_valid_keys(:name, :name_prefix, :name_suffix)
       class_attribute :constant_table_options, :instance_writer => false
       self.constant_table_options = options
+
+      @constant_record_methods = nil
       
       if ActiveRecord::VERSION::MAJOR == 4
         extend ActiveRecord4ClassMethods
