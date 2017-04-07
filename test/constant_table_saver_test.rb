@@ -161,7 +161,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
   end
   
   test "it passes the options preventing caching to the underlying query methods" do
-    assert_nil nil, ConstantPie.where(:filling => 'unicorn').first
+    assert_nil ConstantPie.where(:filling => 'unicorn').first
     assert_equal [],  ConstantPie.where(:filling => 'unicorn').all
   end
   
