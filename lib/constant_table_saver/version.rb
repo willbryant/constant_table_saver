@@ -1,3 +1,3 @@
 module ConstantTableSaver
-  VERSION = '4.2.0'
+  VERSION = '5.1.0'
 end
