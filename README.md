@@ -11,7 +11,7 @@ named after the name field you specify.
 Compatibility
 =============
 
-Currently tested against Rails 5.1 (5.1.0beta2) and 5.0 (up to 5.0.2) and 4.2 (up to 4.2.7), on Ruby 2.3.4.
+Currently tested against Rails 5.1 (5.1.1) and 5.0 (up to 5.0.2) and 4.2 (up to 4.2.7), on Ruby 2.3.4.
 
 For earlier versions of Rails, use an older version of the gem.
 
