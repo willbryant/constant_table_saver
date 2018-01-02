@@ -82,4 +82,4 @@ Means you will also have methods returning those records:
 Optionally, you can specify a `:name_prefix` and/or `:name_suffix`.
 
 
-Copyright (c) 2010-2017 Will Bryant, Sekuda Ltd, released under the MIT license
+Copyright (c) 2010-2018 Will Bryant, Sekuda Ltd, released under the MIT license
