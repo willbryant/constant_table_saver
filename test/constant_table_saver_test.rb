@@ -14,11 +14,16 @@ class ConstantPie < ActiveRecord::Base
   def self.with_unicorn_filling_scope
     with_scope(:find => {:conditions => {:filling => 'unicorn'}}) { yield }
   end
+
+  def self.retrieve_pies
+    current_scope.map { |x| x }
+  end
 end
 
 class ConstantNamedPie < ActiveRecord::Base
   set_table_name "pies"
   constant_table :name => :filling
+
 end
 
 class ConstantLongNamedPie < ActiveRecord::Base
@@ -64,6 +69,11 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     end
   end
 
+  test "it does not return all when no binds are set" do
+    @pies = ConstantPie.where(:filling => ["Tasty beef steak"]).retrieve_pies
+    assert_equal @pies.size, 1
+  end
+
   test "it caches find(id) results" do
     @pie = StandardPie.find(1)
     @other_pie = StandardPie.find(2)
@@ -97,7 +107,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
       assert_equal @pie.attributes, ConstantPie.first.attributes
     end
   end
-  
+
   test "it caches last() results" do
     @pie = StandardPie.last
     assert_queries(1) do
@@ -107,7 +117,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
       assert_equal @pie.attributes, ConstantPie.last.attributes
     end
   end
-  
+
   test "it caches belongs_to association find queries" do
     @standard_pie_ingredients = IngredientForStandardPie.all.to_a
     @standard_pies = @standard_pie_ingredients.collect(&:pie)
@@ -119,25 +129,25 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
       assert_equal @standard_pies.collect(&:attributes), @constant_pie_ingredients.collect(&:pie).collect(&:attributes)
     end
   end
-  
+
   test "it isn't affected by scopes active at the time of first load" do
     assert_equal 0, ConstantPie.filled_with_unicorn.all.to_a.size
     assert_equal StandardPie.all.to_a.size, ConstantPie.all.to_a.size
   end
-  
+
   test "it isn't affected by relational algebra active at the time of first load" do
     assert_equal 0, ConstantPie.filled_with_unicorn.all.to_a.size
     assert_equal 0, ConstantPie.where(:filling => 'unicorn').all.to_a.length
     assert_equal 2, ConstantPie.where("filling LIKE 'Tasty%'").all.to_a.length
     assert_equal StandardPie.all.to_a.size, ConstantPie.all.to_a.size
   end
-  
+
   test "prevents the returned records from modification" do
     @pie = ConstantPie.first
     assert @pie.frozen?
     assert !StandardPie.first.frozen?
   end
-  
+
   test "isn't affected by modifying the returned result arrays" do
     @pies = ConstantPie.all.to_a
     @pies.reject! {|pie| pie.filling =~ /Steak/}
@@ -159,12 +169,12 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
       assert_equal [@pie, @second_pie].collect(&:attributes), ConstantPie.select("id").find([1, 2]).collect(&:attributes)
     end
   end
-  
+
   test "it passes the options preventing caching to the underlying query methods" do
     assert_nil ConstantPie.where(:filling => 'unicorn').first
     assert_equal [],  ConstantPie.where(:filling => 'unicorn').all
   end
-  
+
   test "it creates named class methods if a :name option is given" do
     @steak_pie = StandardPie.find_by_filling("Tasty beef steak")
     @mushroom_pie = StandardPie.find_by_filling("Tasty mushrooms with tarragon")
@@ -184,25 +194,25 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
       ActiveRecord::Base.tasty_beef_steak
     end
   end
-  
+
   test "it supports :name_prefix and :name_suffix options" do
     @steak_pie = StandardPie.find_by_filling("Tasty beef steak")
     assert_equal @steak_pie.attributes, ConstantLongNamedPie.a_tasty_beef_steak_pie.attributes
   end
-  
+
   test "it raises the usual exception if asked for a record with id nil" do
     assert_raises ActiveRecord::RecordNotFound do
       ConstantPie.find(nil)
     end
   end
-  
+
   test "it raises the usual exception if asked for a nonexistant records" do
     max_id = ConstantPie.all.to_a.collect(&:id).max
     assert_raises ActiveRecord::RecordNotFound do
       ConstantPie.find(max_id + 1)
     end
   end
-  
+
   test "it raises the usual exception if asked for a mixture of present records and nonexistant records" do
     max_id = ConstantPie.all.to_a.collect(&:id).max
     assert_raises ActiveRecord::RecordNotFound do
