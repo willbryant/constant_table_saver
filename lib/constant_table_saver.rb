@@ -80,7 +80,7 @@ module ConstantTableSaver
   module ActiveRecord5ClassMethods
     def find_by_sql(sql, binds = [], preparable: nil, &block)
       @find_by_sql ||= {
-        :all   => all.to_sql,
+        :all   => relation.to_sql,
         :id    => relation.where(relation.table[primary_key].eq(Arel::Nodes::BindParam.new)).limit(1).arel,
         :first => relation.order(relation.table[primary_key].asc).limit(1).arel,
         :last  => relation.order(relation.table[primary_key].desc).limit(1).arel,
@@ -119,7 +119,7 @@ module ConstantTableSaver
   module ActiveRecord4ClassMethods
     def find_by_sql(sql, binds = [])
       @find_by_sql ||= {
-        :all   => all.to_sql,
+        :all   => relation.to_sql,
         :id    => relation.where(relation.table[primary_key].eq(connection.substitute_at(columns_hash[primary_key], 0))).limit(1).
                     tap {|r| r.bind_values += [[columns_hash[primary_key], :undefined]]}. # work around AR 4.1.9-4.1.x (but not 4.2.x) calling nil.first if there's no bind_values
                     arel,

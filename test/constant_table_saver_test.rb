@@ -14,6 +14,10 @@ class ConstantPie < ActiveRecord::Base
   def self.with_unicorn_filling_scope
     with_scope(:find => {:conditions => {:filling => 'unicorn'}}) { yield }
   end
+
+  def self.retrieve_pies
+    all.map { |x| x }
+  end
 end
 
 class ConstantNamedPie < ActiveRecord::Base
@@ -160,6 +164,25 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     end
   end
   
+  test "it doesn't cache find queries on scoped methods, even when no binds are set, if the records have been cached" do
+    ConstantPie.all.to_a
+    assert_queries(1) do
+      @pies = ConstantPie.where(:filling => ["Tasty beef steak"]).retrieve_pies
+    end
+    assert_equal 1, @pies.size
+  end
+
+  test "it doesn't cache find queries on scoped methods, even when no binds are set, if the records have not been cached" do
+    # these two lines are needed to fix random test order failures when nothing has hit the ConstantPie schema before
+    ConstantPie.all.to_a
+    ConstantPie.reset_constant_record_cache!
+
+    assert_queries(1) do
+      @pies = ConstantPie.where(:filling => ["Tasty beef steak"]).retrieve_pies
+    end
+    assert_equal 1, @pies.size
+  end
+
   test "it passes the options preventing caching to the underlying query methods" do
     assert_nil ConstantPie.where(:filling => 'unicorn').first
     assert_equal [],  ConstantPie.where(:filling => 'unicorn').all
