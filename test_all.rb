@@ -10,6 +10,7 @@ rails_versions.each do |version|
   system "RAILS_VERSION=#{version} bundle update rails" or exit(1)
 
   rails_envs.each do |env|
+    puts "Rails #{version}, #{env}"
     system "RAILS_ENV=#{env} bundle exec rake" or exit(2)
   end
 end
