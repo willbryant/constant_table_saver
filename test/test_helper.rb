@@ -11,6 +11,7 @@ require 'active_support'
 require 'active_support/test_case'
 require 'active_record'
 require 'active_record/fixtures'
+require 'byebug'
 
 RAILS_ENV = ENV['RAILS_ENV'] ||= 'sqlite3'
 
