@@ -57,6 +57,10 @@ module ConstantTableSaver
     def _to_sql_with_binds(sql, binds)
       if sql.respond_to?(:to_sql)
         # an arel object
+        if sql.respond_to?(:ast)
+          binds = []
+        end
+
         connection.to_sql(sql, binds)
       else
         # a plain string
@@ -107,37 +111,68 @@ module ConstantTableSaver
 
   module ActiveRecord5ClassMethods
     def find_by_sql(sql, binds = [], preparable: nil, &block)
+      if ActiveRecord::VERSION::MINOR == 2
+        primary_key_bind_param = Arel::Nodes::BindParam.new('')
+        attribute_klass = ActiveModel::Attribute
+      else
+        primary_key_bind_param = Arel::Nodes::BindParam.new
+        attribute_klass = ActiveRecord::Attribute
+      end
+
       @find_by_sql ||= {
         :all   => relation.to_sql,
-        :id    => relation.where(relation.table[primary_key].eq(Arel::Nodes::BindParam.new)).limit(1).arel,
+        :id    => relation.where(relation.table[primary_key].eq(primary_key_bind_param)).limit(1).arel,
         :first => relation.order(relation.table[primary_key].asc).limit(1).arel,
         :last  => relation.order(relation.table[primary_key].desc).limit(1).arel,
       }
 
-      @limit_one ||= ActiveRecord::Attribute.with_cast_value("LIMIT", 1, ActiveRecord::Type::Value.new)
+      @limit_one ||= attribute_klass.with_cast_value("LIMIT", 1, ActiveRecord::Type::Value.new)
 
       _sql = _to_sql_with_binds(sql, binds)
 
-      if binds.empty?
-        if _sql == @find_by_sql[:all]
-          return @cached_records ||= super(relation.to_sql).each(&:freeze)
+      if ActiveRecord::VERSION::MINOR == 2
+        if binds.empty? # Arel case
+          if _sql == @find_by_sql[:all]
+            return @cached_records ||= super(relation.to_sql).each(&:freeze)
+          elsif _sql == _to_sql_with_binds(@find_by_sql[:first], binds)
+            return [relation.to_a.first].compact
+          elsif _sql == _to_sql_with_binds(@find_by_sql[:last], binds)
+            return [relation.to_a.last].compact
+          elsif _sql == _to_sql_with_binds(@find_by_sql[:id], binds)
+            @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
+            id_value = sql.constraints.first.left.right.value.value.to_param
+            return [@cached_records_by_id[id_value]].compact
+          end
+        elsif binds.size == 2 &&
+              binds.last == @limit_one &&
+              binds.first.is_a?(ActiveRecord::Relation::QueryAttribute) &&
+              binds.first.name == primary_key &&
+              _sql == _to_sql_with_binds(@find_by_sql[:id], binds) # we have to late-render the find(id) SQL because mysql2 on 4.1 and later requires the bind variables to render the SQL, and errors out with a nil dereference otherwise
+              @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
+              return [@cached_records_by_id[binds.first.value.to_param]].compact
         end
+      else
+        if binds.empty?
+          if _sql == @find_by_sql[:all]
+            return @cached_records ||= super(relation.to_sql).each(&:freeze)
+          end
 
-      elsif binds.size == 1 &&
-            binds.last == @limit_one
-        if _sql == _to_sql_with_binds(@find_by_sql[:first], binds)
-          return [relation.to_a.first].compact
-        elsif _sql == _to_sql_with_binds(@find_by_sql[:last], binds)
-          return [relation.to_a.last].compact
+        elsif binds.size == 1 &&
+              binds.last == @limit_one
+          if _sql == _to_sql_with_binds(@find_by_sql[:first], binds)
+            return [relation.to_a.first].compact
+          elsif _sql == _to_sql_with_binds(@find_by_sql[:last], binds)
+            return [relation.to_a.last].compact
+          end
+
+        elsif binds.size == 2 &&
+              binds.last == @limit_one &&
+              binds.first.is_a?(ActiveRecord::Relation::QueryAttribute) &&
+              binds.first.name == primary_key &&
+              _sql == _to_sql_with_binds(@find_by_sql[:id], binds) # we have to late-render the find(id) SQL because mysql2 on 4.1 and later requires the bind variables to render the SQL, and errors out with a nil dereference otherwise
+          @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
+          return [@cached_records_by_id[binds.first.value.to_param]].compact
         end
-
-      elsif binds.size == 2 &&
-            binds.last == @limit_one &&
-            binds.first.is_a?(ActiveRecord::Relation::QueryAttribute) &&
-            binds.first.name == primary_key &&
-            _sql == _to_sql_with_binds(@find_by_sql[:id], binds) # we have to late-render the find(id) SQL because mysql2 on 4.1 and later requires the bind variables to render the SQL, and errors out with a nil dereference otherwise
-        @cached_records_by_id ||= relation.to_a.index_by {|record| record.id.to_param}
-        return [@cached_records_by_id[binds.first.value.to_param]].compact
       end
 
       super(sql, binds, preparable: preparable, &block)
