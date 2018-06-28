@@ -12,8 +12,10 @@ module ConstantTableSaver
       
       if ActiveRecord::VERSION::MAJOR == 4
         extend ActiveRecord4ClassMethods
-      else
+      elsif ActiveRecord::VERSION::MINOR == 0 || ActiveRecord::VERSION::MINOR == 1
         extend ActiveRecord5ClassMethods
+      else
+        extend ActiveRecord52ClassMethods
       end
       extend ClassMethods
       extend NameClassMethods if constant_table_options[:name]
@@ -75,6 +77,32 @@ module ConstantTableSaver
         end
       end
     end
+  end
+
+  module ActiveRecord52ClassMethods
+    def find_by_sql(sql, binds = [], preparable: nil, &block)
+      @find_by_sql ||= {
+        :all   => relation.to_sql,
+        :first => relation.order(relation.table[primary_key].asc).limit(1).arel,
+        :last  => relation.order(relation.table[primary_key].desc).limit(1).arel,
+      }
+
+      _sql = _to_sql_with_binds(sql, binds)
+
+      if binds.empty?
+        if _sql == @find_by_sql[:all]
+          return @cached_records ||= super(relation.to_sql).each(&:freeze)
+        elsif _sql == _to_sql_with_binds(@find_by_sql[:first], binds)
+          return [relation.to_a.first].compact
+        elsif _sql == _to_sql_with_binds(@find_by_sql[:last], binds)
+          return [relation.to_a.last].compact
+        end
+      end
+
+      super(sql, binds, preparable: preparable, &block)
+    end
+
+    # TODO: implement support for caching finds by ID
   end
 
   module ActiveRecord5ClassMethods
