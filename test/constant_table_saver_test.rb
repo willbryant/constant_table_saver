@@ -152,6 +152,7 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     @pies = StandardPie.select("id").all.to_a
     @pie = StandardPie.select("id").find(1)
     @second_pie = StandardPie.select("id").find(2)
+    ConstantPie.first
     assert_queries(3) do
       assert_equal @pies.collect(&:attributes), ConstantPie.select("id").all.collect(&:attributes)
       assert_equal @pie.attributes, ConstantPie.select("id").find(1).attributes
@@ -177,10 +178,11 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
     ConstantPie.all.to_a
     ConstantPie.reset_constant_record_cache!
 
-    assert_queries(1) do
-      @pies = ConstantPie.where(:filling => ["Tasty beef steak"]).retrieve_pies
-    end
+    # retrieve_pies here is to test the behavior of scoped class methods:
+    @pies = ConstantPie.where(:filling => ["Tasty beef steak"]).retrieve_pies
     assert_equal 1, @pies.size
+
+    assert_equal StandardPie.count, ConstantPie.all.to_a.size
   end
 
   test "it passes the options preventing caching to the underlying query methods" do

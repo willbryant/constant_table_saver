@@ -54,16 +54,6 @@ module ConstantTableSaver
       @cached_records = @cached_records_by_id = @constant_record_methods = @cached_blank_scope = @find_by_sql = nil
     end
 
-    def _to_sql_with_binds(sql, binds)
-      if sql.respond_to?(:to_sql)
-        # an arel object
-        connection.to_sql(sql, binds)
-      else
-        # a plain string
-        sql
-      end
-    end
-
     def relation
       super.tap do |s|
         class << s
@@ -81,28 +71,36 @@ module ConstantTableSaver
 
   module ActiveRecord52ClassMethods
     def find_by_sql(sql, binds = [], preparable: nil, &block)
-      @find_by_sql ||= {
-        :all   => relation.to_sql,
-        :first => relation.order(relation.table[primary_key].asc).limit(1).arel,
-        :last  => relation.order(relation.table[primary_key].desc).limit(1).arel,
-      }
+      @cached_records ||= super(relation.to_sql).each(&:freeze).freeze
 
-      _sql = _to_sql_with_binds(sql, binds)
+      @cached_results ||= @cached_records.each_with_object({
+        # matches .all queries:
+        to_sql_and_binds(relation) => @cached_records,
 
-      if binds.empty?
-        if _sql == @find_by_sql[:all]
-          return @cached_records ||= super(relation.to_sql).each(&:freeze)
-        elsif _sql == _to_sql_with_binds(@find_by_sql[:first], binds)
-          return [relation.to_a.first].compact
-        elsif _sql == _to_sql_with_binds(@find_by_sql[:last], binds)
-          return [relation.to_a.last].compact
-        end
+        # matches .first queries:
+        to_sql_and_binds(relation.order(relation.table[primary_key].asc).limit(1).arel) => [@cached_records.first].compact,
+
+        # matches .last queries:
+        to_sql_and_binds(relation.order(relation.table[primary_key].desc).limit(1).arel) => [@cached_records.last].compact,
+      }) do |record, results|
+        results[to_sql_and_binds(relation.where(relation.table[primary_key].eq(relation.predicate_builder.build_bind_attribute(primary_key, record.id))).limit(1).arel)] = [record]
+      end.freeze
+
+      sql_and_binds = to_sql_and_binds(sql, binds)
+      sql_and_binds = [sql_and_binds.first, []] unless connection.prepared_statements
+
+      if results = @cached_results[sql_and_binds]
+        results
+      else
+        super(sql, binds, preparable: preparable, &block)
       end
-
-      super(sql, binds, preparable: preparable, &block)
     end
 
-    # TODO: implement support for caching finds by ID
+  private
+    def to_sql_and_binds(sql, binds = [])
+      sql = sql.arel if sql.respond_to?(:arel)
+      connection.send(:to_sql_and_binds, sql, binds)
+    end
   end
 
   module ActiveRecord5ClassMethods
@@ -142,6 +140,16 @@ module ConstantTableSaver
 
       super(sql, binds, preparable: preparable, &block)
     end
+
+    def _to_sql_with_binds(sql, binds)
+      if sql.respond_to?(:to_sql)
+        # an arel object
+        connection.to_sql(sql, binds)
+      else
+        # a plain string
+        sql
+      end
+    end
   end
 
   module ActiveRecord4ClassMethods
@@ -175,6 +183,16 @@ module ConstantTableSaver
       end
 
       super
+    end
+
+    def _to_sql_with_binds(sql, binds)
+      if sql.respond_to?(:to_sql)
+        # an arel object
+        connection.to_sql(sql, binds)
+      else
+        # a plain string
+        sql
+      end
     end
   end
 
