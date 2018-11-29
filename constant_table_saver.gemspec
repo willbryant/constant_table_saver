@@ -20,7 +20,6 @@ Currently tested against Rails 5.2 (up to 5.2.1), 5.1 (up to 5.1.6) and 5.0 (up 
 
 For earlier versions of Rails, use an older version of the gem.
 EOF
-  gem.has_rdoc     = false
   gem.author       = "Will Bryant"
   gem.email        = "will.bryant@gmail.com"
   gem.homepage     = "http://github.com/willbryant/constant_table_saver"
