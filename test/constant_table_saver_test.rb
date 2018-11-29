@@ -8,6 +8,8 @@ end
 class ConstantPie < ActiveRecord::Base
   set_table_name "pies"
   constant_table
+
+  has_one :ingredient, class_name: "IngredientForConstantPie", foreign_key: 'pie_id'
   
   scope :filled_with_unicorn, -> { where(:filling => 'unicorn') }
   
@@ -234,4 +236,11 @@ class ConstantTableSaverTest < ActiveSupport::TestCase
       ConstantPie.find([max_id, max_id + 1])
     end
   end
+
+  test "it correctly loads when includes are used" do
+    IngredientForConstantPie.includes(:pie).find_by(:id => 3)
+    assert_queries(2) do
+      IngredientForConstantPie.includes(:pie).find_by(:id => 3)
+    end
+  end  
 end
