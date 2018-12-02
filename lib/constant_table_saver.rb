@@ -71,7 +71,7 @@ module ConstantTableSaver
 
   module ActiveRecord52ClassMethods
     def find_by_sql(sql, binds = [], preparable: nil, &block)
-      @cached_records ||= super(relation.to_sql).each(&:freeze).freeze
+      @cached_records ||= super(relation.to_sql, &nil).each(&:freeze).freeze
 
       @cached_results ||= @cached_records.each_with_object({
         # matches .all queries:
