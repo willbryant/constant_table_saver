@@ -12,7 +12,7 @@ module ConstantTableSaver
       
       if ActiveRecord::VERSION::MAJOR == 4
         extend ActiveRecord4ClassMethods
-      elsif ActiveRecord::VERSION::MINOR == 0 || ActiveRecord::VERSION::MINOR == 1
+      elsif ActiveRecord::VERSION::MAJOR == 5 && (ActiveRecord::VERSION::MINOR == 0 || ActiveRecord::VERSION::MINOR == 1)
         extend ActiveRecord5ClassMethods
       else
         extend ActiveRecord52ClassMethods
