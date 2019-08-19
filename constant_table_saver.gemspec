@@ -32,8 +32,8 @@ EOF
 
   gem.add_dependency "activerecord"
   gem.add_development_dependency "rake"
-  gem.add_development_dependency "mysql2" # you probably want 0.4.10 if testing with old versions of rails, but this gem doesn't care
-  gem.add_development_dependency "pg"     # you probably want 0.21.0 if testing with old versions of rails, but this gem doesn't care
-  gem.add_development_dependency "sqlite3"
+  gem.add_development_dependency "mysql2"  # you probably want 0.4.10 if testing with old versions of rails, but this gem doesn't care
+  gem.add_development_dependency "pg"      # you probably want 0.21.0 if testing with old versions of rails, but this gem doesn't care
+  gem.add_development_dependency "sqlite3" # you probably want 1.3.6 if testing with old versions of rails, but this gem doesn't care
   gem.add_development_dependency "byebug"
 end

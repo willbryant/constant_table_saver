@@ -5,18 +5,21 @@
 # versions, or we won't be able to test out support for them.
 FROM ubuntu:16.04
 
-# this dockerfile builds kitchen sync on ubuntu and runs the test suite.
-
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+	apt-get install -y software-properties-common && \
+	apt-add-repository ppa:brightbox/ruby-ng && \
+	DEBIAN_FRONTEND=noninteractive apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git \
 		mysql-server libmysqlclient-dev postgresql-9.5 libpq-dev libsqlite3-dev \
-		ruby ruby-dev && \
+		ruby2.5 ruby2.5-dev && \
 	rm -f /etc/apt/apt.conf.d/20auto-upgrades && \
 	apt-get clean -y && \
 	rm -rf /var/cache/apt/archives/*
 
-RUN gem install bundler --no-ri --no-rdoc
+RUN ln -sf /usr/bin/ruby2.5 /usr/bin/ruby
+RUN ln -sf /usr/bin/gem2.5 /usr/bin/gem
+RUN gem install bundler -v 1.16.4 --no-ri --no-rdoc
 
 # install a version of mysql2 that the older versions of rails are compatible with
 RUN gem install mysql2 -v 0.4.10

@@ -2,12 +2,12 @@
 
 require 'yaml'
 
-rails_versions = ["5.2.2rc1", "5.2.0".."5.2.1", "5.1.1".."5.1.6", "5.0.2".."5.0.6", "4.2.10"].flat_map {|spec| Array(spec).collect {|v| v.gsub /.0(\d)/, '.\\1'}}
+rails_versions = ["6.0.0", "5.2.0".."5.2.3", "5.1.1".."5.1.6", "5.0.2".."5.0.6", "4.2.10"].flat_map {|spec| Array(spec).collect {|v| v.gsub /.0(\d)/, '.\\1'}}
 rails_envs = YAML.load(File.read("test/database.yml")).keys
 
 rails_versions.each do |version|
   puts "*"*40
-  system "RAILS_VERSION=#{version} bundle update rails" or exit(1)
+  system "RAILS_VERSION=#{version} bundle update" or exit(1)
 
   rails_envs.each do |env|
     puts "Rails #{version}, #{env}"
