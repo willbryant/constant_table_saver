@@ -11,4 +11,4 @@ services:
 before_script:
   - createdb -U postgres columns_on_demand_test
   - mysqladmin -u root create columns_on_demand_test
-script: ./test_all.sh
+script: ./test_all.rb
