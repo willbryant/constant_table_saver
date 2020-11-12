@@ -9,6 +9,6 @@ services:
   - postgresql
   - mysql
 before_script:
-  - createdb -U postgres columns_on_demand_test
-  - mysqladmin -u root create columns_on_demand_test
+  - createdb -U postgres constant_table_saver_test
+  - mysqladmin -u root create constant_table_saver_test
 script: ./test_all.rb
