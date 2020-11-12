@@ -2,7 +2,7 @@
 
 require 'yaml'
 
-rails_versions = ["6.0.0", "5.2.0".."5.2.3", "5.1.1".."5.1.6", "5.0.2".."5.0.6", "4.2.10"].flat_map {|spec| Array(spec).collect {|v| v.gsub /.0(\d)/, '.\\1'}}
+rails_versions = ["6.1.0.rc1", "6.0.3.4 ", "5.2.4.4", "5.1.7", "5.0.7.2"].flat_map {|spec| Array(spec).collect {|v| v.gsub /.0(\d)/, '.\\1'}}
 rails_envs = YAML.load(File.read("test/database.yml")).keys
 
 rails_versions.each do |version|

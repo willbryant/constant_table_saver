@@ -11,9 +11,7 @@ named after the name field you specify.
 Compatibility
 =============
 
-Currently tested against Rails 6.0.0, 5.2 (up to 5.2.3), 5.1 (up to 5.1.6), 5.0 (up to 5.0.6), and 4.2 (up to 4.2.10).
-
-For earlier versions of Rails, use an older version of the gem.
+Currently tested against Rails 6.1.0.rc1, 6.0.3.4, 5.2.4.4, 5.1.7, and 5.0.7.2, with older gem versions compatible with earlier Rails versions.
 
 
 Example

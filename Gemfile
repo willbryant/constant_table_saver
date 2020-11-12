@@ -13,8 +13,6 @@ gemspec
 gem 'rails', ENV['RAILS_VERSION']
 
 # see notes in the gemspec
-if ENV['RAILS_VERSION'] =~ /^[45]/
-  gem "mysql2",  "~> 0.4.10"
-  gem "pg",      "~> 0.21.0"
+if ENV['RAILS_VERSION'] =~ /^5\.0/
   gem "sqlite3", "~> 1.3.6"
 end
