@@ -85,4 +85,4 @@ Thanks
 
 * Marc Shaw (@marcshaw)
 
-Copyright (c) 2010-2018 Will Bryant, Sekuda Ltd, released under the MIT license
+Copyright (c) 2010-2020 Will Bryant, Sekuda Ltd, released under the MIT license
