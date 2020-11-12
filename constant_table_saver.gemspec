@@ -11,14 +11,6 @@ cached (and frozen) records for all find calls.
 
 Optionally, creates class-level methods you can use to grab the records,
 named after the name field you specify.
-
-
-Compatibility
-=============
-
-Currently tested against Rails 5.2 (up to 5.2.1), 5.1 (up to 5.1.6) and 5.0 (up to 5.0.6) and 4.2 (up to 4.2.10).
-
-For earlier versions of Rails, use an older version of the gem.
 EOF
   gem.author       = "Will Bryant"
   gem.email        = "will.bryant@gmail.com"
