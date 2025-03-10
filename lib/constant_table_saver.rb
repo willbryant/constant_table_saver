@@ -14,6 +14,8 @@ module ConstantTableSaver
         extend ActiveRecord4ClassMethods
       elsif ActiveRecord::VERSION::MAJOR == 5 && (ActiveRecord::VERSION::MINOR == 0 || ActiveRecord::VERSION::MINOR == 1)
         extend ActiveRecord5ClassMethods
+      elsif ActiveRecord::VERSION::MAJOR == 7 && ActiveRecord::VERSION::MINOR == 2
+        extend ActiveRecord72ClassMethods
       else
         extend ActiveRecord52ClassMethods
       end
@@ -73,6 +75,42 @@ module ConstantTableSaver
           end
         end
       end
+    end
+  end
+
+  module ActiveRecord72ClassMethods
+    def find_by_sql(sql, binds = [], preparable: nil, allow_retry: false, &block)
+      @cached_records ||= super(relation.to_sql, &nil).each(&:freeze).freeze
+
+      # to_sql_and_binds returns [sql, binds] prior to 6.1, and [sql, binds, preparable] on 6.1. we take the [0..1] slice
+      # to ignore the preparable flag, which is useful metadata for adapters but not required for us to match statements.
+      @cached_results ||= @cached_records.each_with_object({
+        # matches .all queries:
+        to_sql_and_binds(relation)[0..1] => @cached_records,
+
+        # matches .first queries:
+        to_sql_and_binds(relation.order(relation.table[primary_key].asc).limit(1).arel)[0..1] => [@cached_records.first].compact,
+
+        # matches .last queries:
+        to_sql_and_binds(relation.order(relation.table[primary_key].desc).limit(1).arel)[0..1] => [@cached_records.last].compact,
+      }) do |record, results|
+        results[to_sql_and_binds(relation.where(relation.table[primary_key].eq(relation.predicate_builder.build_bind_attribute(primary_key, record.id))).limit(1).arel)[0..1]] = [record]
+      end.freeze
+
+      sql_and_binds = to_sql_and_binds(sql, binds)[0..1]
+      sql_and_binds = [sql_and_binds.first, []] unless connection.prepared_statements
+
+      if results = @cached_results[sql_and_binds]
+        results
+      else
+        super(sql, binds, preparable: preparable, allow_retry: allow_retry, &block)
+      end
+    end
+
+  private
+    def to_sql_and_binds(sql, binds = [])
+      sql = sql.arel if sql.respond_to?(:arel)
+      connection.send(:to_sql_and_binds, sql, binds)
     end
   end
 
